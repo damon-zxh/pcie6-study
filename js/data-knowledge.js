@@ -535,6 +535,538 @@ const KNOWLEDGE = [
   ].join('\n'),
   verify: '实践与刷题结合：每学完一个模块，先过本系统对应题目，再写对应代码模块。'
 },
+
+/* ================= 深度卡片（规范级细节） ================= */
+
+{
+  id: 'k-m1-08', module: 'm1', title: 'TLP Header 逐字段解析（DW0~DW3）',
+  tags: ['TLP', 'header', '字段', '深度'],
+  body: [
+    'TLP Header 为 3DW（12B）或 4DW（16B），字段语义如下（位级布局请对照规范 "TLP Header" 格式图，Base Spec 事务层章节）：',
+    '- **DW0**：`Fmt[1:0]`（Header 格式）+ `Type[4:0]`（事务类型）+ `TC[2:0]`（Traffic Class，默认 0）+ `TD`（存在 TLP Digest）+ `EP`（Poisoned 数据标记）+ `Attr`（属性位：Relaxed Ordering / No Snoop / ID-based Ordering）+ `Length[9:0]`（以 DW 为单位的 payload 长度，位于 DW0 低 10 位）。',
+    '- **DW1**：Request 类 TLP 为 **Requester ID**（Bus:Dev:Fn，16b）+ **Tag**（8b，Gen4+ 可扩展到 10b tag 以支持最多 1024 个未完成请求）；Completion 类为 Completer ID 等 ID 字段。',
+    '- **DW2（3DW 头）**：32 位地址；**DW2/DW3（4DW 头）**：64 位地址。Mem/IO/Config 请求带 **First DW BE / Last DW BE**（首尾 DWORD 字节使能，指示哪些字节有效）。',
+    '- Config 请求的 DW2 低位还有 **Register Number / Extended Register Number** 字段。',
+    '',
+    '**关键位语义**：',
+    '- `EP=1` 表示数据已被污染（poisoned），接收方按错误处理但不得丢弃链路状态——验证上要确认 poison 传播策略。',
+    '- `TC` 与 VC 映射：不同 TC 可走不同虚拟通道，是 QoS 和死锁避免的基础。',
+    '- `Length=0` 有特殊含义：MemRd 表示读 1 DW（零长度读），Message 表示无数据。',
+    '- `First/Last BE` 组合出"部分首尾 DW"的合法集合（如 First=0001/0011/0111/1111 等），非法组合是协议违规。'
+  ].join('\n'),
+  verify: '逐字段 checker：Fmt/Type 合法组合表、Length 与实际字节数一致、BE 合法集合、Tag 不超过已授权数量、ID 与配置空间匹配。'
+},
+{
+  id: 'k-m1-09', module: 'm1', title: 'Fmt/Type 编码表（常用 TLP 全集）',
+  tags: ['TLP', '编码', 'Fmt', 'Type', '深度'],
+  body: [
+    'DW0 高位决定 TLP 类型，**Fmt 决定头长与有无数据**：`00`=3DW 无数据，`01`=4DW 无数据，`10`=3DW 带数据，`11`=4DW 带数据。',
+    '',
+    '| Type | 事务 | 说明 |',
+    '| 00000 | MemRd / MemWr | Memory 读写（Fmt 决定带否数据） |',
+    '| 00001 | MemRdLk / MemWr? | 锁定读（Legacy，配合 Lock 语义） |',
+    '| 00010 | IORd / IOWr | IO 读写（恒 3DW 头） |',
+    '| 00100 | CfgRd0 / CfgWr0 | Type 0 配置读/写（目标为下游端点） |',
+    '| 00101 | CfgRd1 / CfgWr1 | Type 1 配置读/写（目标为下游桥下设备） |',
+    '| 01010 | Cpl / CplD | 无数据/带数据 Completion |',
+    '| 01011 | CplLk / CplDLk | 锁定 Completion（Legacy） |',
+    '| 1xxxx | Msg / MsgD | Message（有无数据由最低位区分） |',
+    '',
+    '- **Message 路由子类型**（Type 高位）：`01000` Address、`01001` ID、`01100` 广播?（以规范为准）、`10010` 本地、`10011` 采集（gathered）、`10100`/`10101` 直达路由。常见消息：INTx（Assert/Deassert）、错误消息、Set/Get_Slot_Power、PME_Turn_Off、Unlock、LTR、Set_Deallocate_Type 等。',
+    '- **AtomicOp（Gen3+）**：FetchAdd / Swap / CompareSwap，可用 4DW 头，目标为 P2P 端点内存（不经主存），验证时关注路由与原子性保障。',
+    '- 配置事务只由 RC 发起：目标在下游总线上用 Type 0，目标在自身次级总线的桥后用 Type 1。'
+  ].join('\n'),
+  verify: '用例需覆盖每条 Type 编码的生成与解析；非法 Type/Fmt 组合（如 CfgRd 带 4DW 头）必须报协议错误。'
+},
+{
+  id: 'k-m1-10', module: 'm1', title: 'DLLP 类型全集与帧结构',
+  tags: ['DLLP', 'Ack', 'Nak', '流控', '深度'],
+  body: [
+    'DLLP 是链路层管理的 8 字节定长帧：**1B Type + 3B 信息 + 2B CRC16（+ 扩展）**，无序列号、无 ACK、不经流控。',
+    '',
+    '| 类别 | Type 编码 | 信息字段 |',
+    '| ACK | 00h | AckNak_Seq_Num[11:0]（下一个期望序列号） |',
+    '| NAK | 10h | AckNak_Seq_Num[11:0]（首个出错 TLP 序列号） |',
+    '| InitFC1-P/NP/Cpl | 8xh/9xh/Axh 区段 | HdrCred[11:0] + DataCred[11:0] |',
+    '| InitFC2-P/NP/Cpl | Cxh/Dxh/Exh 区段 | 同上 |',
+    '| UpdateFC-P/NP/Cpl | F0h/E0h/D0h 等 | 同上 |',
+    '| PM 族 | PM_Enter_L1 / Enter_L23 / Active_State_Request 等 | L-state/子状态编码 |',
+    '| Vendor Specific | 70h 区段 | 自定义（规范允许） |',
+    '',
+    '- FC DLLP 的 credit 字段为 12 bit：数据 credit 以 DW 计；**全 1（FFFh）表示无限 credit**（infinite），常用于 header 或固定 buffer 的设计。',
+    '- InitFC1/InitFC2 都要发，且**以两轮一致为准**（防 DLLP 损坏导致 credit 记账错）；运行期只有 UpdateFC。',
+    '- Ack/NAK 中序列号语义：ACK 携带"已全部确认"的边界（下一个期望），NAK 携带第一个需要重传的 TLP 序列号。',
+    '- DLLP CRC16 保护的是整帧；DLLP CRC 错静默丢弃（无需 NAK——发送方的 Replay 超时机制兜底）。'
+  ].join('\n'),
+  verify: 'DLLP CRC 错误注入验证"静默丢弃 + Replay 超时兜底"路径；InitFC 两轮不一致注入验证错误处理；FFF 无限 credit 的发送行为。'
+},
+{
+  id: 'k-m1-11', module: 'm1', title: '流控记账深入：credit 流转、无限值与协议错误',
+  tags: ['流控', 'credit', '深度', '协议错误'],
+  body: [
+    '**Credit 流转闭环**（以 Completion data credit 为例）：',
+    '- 接收方广播初始 credit（如 128 DW）→ 发送方每发一个 CplD 消耗 credit → 接收方把 buffer 归还给池后发 UpdateFC（**累计归还值**）→ 发送方 `可用 = 授予累计 - 已消耗累计`。',
+    '- 归还值是"从链路训练以来累计发布的 credit 总量"，不是增量——两端各自维护计数器做减法，天然容错单次 DLLP 丢失（下次更新会覆盖）。',
+    '',
+    '**credit 不足判定**：发送一个 TLP 需要的 credit = 1 个 header credit + `ceil(payload DW)` 个 data credit（对 CplD 还有特殊的 DWO/DW1 计数规则——按是否带 BE 处理）。任一不足即必须停发该类 TLP。',
+    '',
+    '**FC 协议错误清单**（规范定义，验证必查）：',
+    '- 接收方收到**超过其已授予 credit** 的 TLP（接收超额）→ 报 FC 协议错误。',
+    '- 发送方在 credit 不足时发送 → 接收方可检出（与上一条同一机制观察）。',
+    '- RO 允许的例外：Relaxed Ordering 的 Posted 写可能" seeming 超额"，需按 RO 规则豁免判断。',
+    '- UpdateFC **超时**（接收方长时间未归还）与 **V=1 语义**（规范允许 UpdateFC 携带"无限"标记场景）。',
+    '',
+    '**验证设计**：建一个独立 FC 记账 scoreboard——按事务类型维护 granted/consumed/returned 三组计数器，任意时刻断言 `consumed ≤ granted` 且 `granted = 初始 + 累计归还`。'
+  ].join('\n'),
+  verify: '数字用例：初始 Cpl data credit=64，连发 17 个 4DW CplD（消耗 68DW）→ 预期第 17 个被阻塞；归还 32DW 后恰可再发 7 个（68-64+32=36? 注意按实际消耗重算）。建议做成参数化用例族。'
+},
+{
+  id: 'k-m1-12', module: 'm1', title: 'LTSSM 全子状态图与关键转移',
+  tags: ['LTSSM', '子状态', '链路训练', '深度'],
+  body: [
+    '主状态与子状态全图（自上而下为正常训练路径）：',
+    '- **Detect**：Quiet（电气空闲、链路未激活）→ Active（发送 Detect 检测波形，感知对端 presence）→ 成功检测到至少 1 lane 对端。',
+    '- **Polling**：Active（互发 TS1/TS2，测 BER，兼容性检测）→ Compliance（进入合规测试模式，发 Compliance Pattern）→ Configuration（TS2 达标）→ Exit。',
+    '- **Configuration**：Linkwidth.Start/Accept（协商目标宽度：下行主导）→ Lanenum.Wait/Accept/Reaccess（分配 lane 编号，检查连续性）→ Complete（交换最终参数、进入 L0 前最后确认）→ Idle。',
+    '- **L0**：正常工作状态。所有事务只在 L0 及其扩展态（L0p）交换。',
+    '- **Recovery**：ReceiverLock（重捕符号锁/块锁）→ RcvrCfg（互发 TS1/TS2 改变链路参数：速率、宽度、均衡）→ Idle → L0。',
+    '- **低功耗**：L0s（Entry/Idle/Exit，单方向快速休眠）；L1（Entry/Idle，双向协商）；L1.1/L1.2（CLKREQ 子状态）；L2（辅助电源域，PME 唤醒）。',
+    '- **测试/管理**：Loopback（Entry/Active/Exit）；Disabled；Hot Reset；Compliance；Recoverable/Controllable Reset（Gen4+ 引入的 FLR 相关）。',
+    '',
+    '**关键转移触发**（覆盖率清单的素材）：',
+    '- L0 → Recovery：速率改变请求、EQ 启动、重传失败（REPLAY_NUM 滚动）、收到 TS1 请求、误码导致失锁。',
+    '- L1 → Recovery：唤醒（收到 EIOS/EIEOS 或 TS1）。',
+    '- Configuration 阶段任何子状态超时 → 降级重试（如 16 lane 目标只训出 8 lane）。',
+    '- 检测到对端 disable → Disabled 状态。'
+  ].join('\n'),
+  verify: '覆盖率必须建模"状态 × 转移 × 触发原因"三维；对每个 Recovery 入口原因单独建 bin（这是实际项目 bug 密集区）。'
+},
+{
+  id: 'k-m1-13', module: 'm1', title: '配置空间寄存器地图与 ECAM 访问',
+  tags: ['配置空间', 'ECAM', 'BAR', '深度'],
+  body: [
+    '**Type 0 标准头（端点）关键字段偏移**：',
+    '- `00h` VendorID / `02h` DeviceID；`04h` Command（含 Bus Master/MSI Enable 等）/ `06h` Status；`08h` RevisionID / ClassCode[23:0]。',
+    '- `0Eh` HeaderType（00h=Type0、01h=Type1、多功能 bit7）；`10h~24h` BAR0~BAR5（每个 32b，64 位 BAR 占两个）。',
+    '- `2Ch` Subsystem Vendor/DeviceID；`30h` Expansion ROM BAR；`34h` Capabilities Pointer（capability 链入口）。',
+    '- `3Ch` Interrupt Line/Pin；MSI/MSI-X/Power/PXIe 等 capability 挂在链上，ID 顺链跳转。',
+    '',
+    '**Type 1 标准头（桥/交换器）**：额外含 `18h` Primary/Secondary/Subordinate Bus Number、`1Ch` Secondary Status、`20h/24h/28h` I/O 与 Memory 的 Base/Limit 窗口、`30h~34h` Prefetchable Memory Base/Limit 等——这是枚举与地址路由的硬件基础。',
+    '',
+    '**常用 capability**：`01h` MSI、`05h` MSI-X、`10h` PCIe Capability。PCIe Capability 内部布局（相对偏移）：`+04h` DeviceCap、`+08h` DevCtrl/Status（MPS=[7:5]、MRRS=[14:12]）、`+0Ch` LinkCap、`+10h` LinkCtrl/Status（ASPM 控制=[1:0]）、Gen4+ 的 `+28h` LinkCap2、`+2Ch` LinkCtrl2（**Target Link Speed=[3:0]**，调试限速利器）。',
+    '',
+    '**MSI-X 结构**：Table（每项 16B：Message Address 64b + Message Data 32b + Vector Control 32b）与 PBA 的位置由 MSI-X capability 中的 BIR（指向哪个 BAR）+ Offset 指定。**MSI** 支持多向量（Multiple Message Enable），地址固定、data 递增区分向量。',
+    '',
+    '**ECAM**：配置空间映射到内存 = `MMCFG基址 + (Bus << 20 | Device << 15 | Function << 12) + offset`，256 条总线全映射需 256MB 空间。总线号超出桥的 Subordinate 时访问产生 Master Abort（读回全 1）。'
+  ].join('\n'),
+  verify: '用寄存器级用例验证：MPS/MRRS 修改后 TLP 尺寸变化、Target Link Speed 限速生效、MSI-X Table 项逐字段正确、ECAM 地址解码与 Master Abort。'
+},
+{
+  id: 'k-m2-05', module: 'm2', title: 'Gen5 → Gen6 协议栈逐层对比',
+  tags: ['对比', '架构', '深度'],
+  body: [
+    '| 层 | Gen5（32 GT/s） | Gen6（64 GT/s） | 验证影响 |',
+    '| 事务层 TL | TLP 直接进 DL | TLP 先装配成 FLIT | 需要新的 TLP↔FLIT 参考模型 |',
+    '| 数据链路 DL | 独立 DLLP 帧 + TLP 粒度 LCRC/Replay | DLLP 消失，Link Control Flit 承载；FLIT 粒度 CRC+FEC+First Retry | 错误处理机制整体重写，是验证重心 |',
+    '| 流控 | 三类独立 credit（Hdr/Data 分计） | FLIT 粒度 + 可选共享缓冲池 | credit 记账模型需重做 |',
+    '| 物理层 PL | NRZ + 128b/130b | PAM4 + FLIT 成帧 + 新均衡/prescoding | PHY 与协议层耦合更深（FEC 分布在符号域） |',
+    '| 电源管理 | L0/L0s/L1.x/L2 | 新增 **L0p**（不断流缩宽） | 新状态机 + 数据连续性验证 |',
+    '| 排序规则 | 经典四类限制 | 同 Gen5；6.1 增补 UIO | UIO 是独立新语义，需能力协商 |',
+    '',
+    '一句话总结：**TL 几乎不动，DL 推倒重来，PL 换血，PM 加一态**。学 6.0 的精力分配应该与这句话成正比。'
+  ].join('\n'),
+  verify: '把本表当验证计划的工作分解结构（WBS）：每格至少对应一个 feature 文件夹和一组用例。'
+},
+{
+  id: 'k-m3-05', module: 'm3', title: 'FLIT 布局细节与开销计算',
+  tags: ['FLIT', '布局', '开销', '深度'],
+  body: [
+    '公开资料普遍引用的 256B FLIT 划分（**精确域边界以规范为准**）：',
+    '- **~236B 净荷区**：承载 TLP（可含多个 TLP 头/数据）。',
+    '- **6B CRC**：CRC-1（2B，16 位，覆盖净荷区前段的 header 部分）+ CRC-2（4B，32 位，覆盖净荷区）。',
+    '- **14B FEC 校验**：RS(544,528) 的校验符号，跨 FLIT 交织布放。',
+    '',
+    '**开销与效率**：CRC+FEC 合计 20B / 256B ≈ 7.8% 协议开销（另有序列管理等少量字段），Gen6 实测净效率约 **90%~92%**，低于 Gen5 的 ~98.5%——但符号率不变下带宽仍翻倍，是值得付的代价。',
+    '**设计取舍**：CRC-1 窄（16b）因为只保护 header 区（错误暴露面小）；CRC-2 宽（32b）保护整个净荷（数据错误暴露面大）。这种"分域 + 分宽"是面积/延迟/保护的折中典范。',
+    '**验证注意**：FLIT 的字节序（lane 上如何 striping）、header 域的精确边界、CRC 覆盖范围（含不含 FLIT 头）都必须与 spec 对齐后写进参考模型——这三处是最容易"想当然"出错的地方。'
+  ].join('\n'),
+  verify: '对 CRC 覆盖范围做边界注错（恰好覆盖边界的字节翻位），确认判决路径符合预期。'
+},
+{
+  id: 'k-m3-06', module: 'm3', title: 'FLIT 模式 vs 非 FLIT 模式：链路层差异总表',
+  tags: ['FLIT', '对比', '链路层', '深度'],
+  body: [
+    '| 维度 | 非 FLIT 模式（Gen1-5） | FLIT 模式（Gen6 速率） |',
+    '| 帧单位 | TLP（变长）+ DLLP（8B 定长） | FLIT（256B 定长） |',
+    '| 链路管理信息 | 独立 DLLP 物理帧 | 搭载于 Link Control Flit |',
+    '| 错误保护 | 每 TLP 12b 序列号 + LCRC32 | FLIT 内双 CRC + 跨 FLIT RS FEC |',
+    '| 重传 | Nak/超时驱动，从序列号起重发 | First Retry：不可纠 FLIT 立即重传 |',
+    '| 流控 credit | Hdr/Data 分计、P/NP/Cpl 独立池 | FLIT 粒度；可选共享池 |',
+    '| 空闲填充 | 电闲/SKP 有序集 | NULL Flit（保持固定节奏） |',
+    '| 时钟容差补偿 | 周期性插入 SKP | 由 PHY 层机制处理（对上层透明） |',
+    '| 速率爬升 | Recovery → 变速率 | 同样经 Recovery，但进入 64 GT/s 后转 FLIT 模式 |',
+    '',
+    '**互操作要点**：同一链路在 ≤32 GT/s 用非 FLIT 模式、64 GT/s 用 FLIT 模式，速率切换必然伴随"链路层协议模式切换"——模式切换瞬间的 in-flight TLP 处理是验证难点（规范要求切换前清空/确认在途数据）。'
+  ].join('\n'),
+  verify: '定向用例：32↔64 GT/s 往返切换时 in-flight TLP 的完整性；切换后立即注错的判决路径。'
+},
+{
+  id: 'k-m3-07', module: 'm3', title: 'TLP→FLIT 装配算法（参考模型伪代码）',
+  tags: ['FLIT', '参考模型', '伪代码', '深度'],
+  body: [
+    '发送侧装配参考模型核心逻辑（验证环境的 golden model）：',
+    '```',
+    'state: cur_flit[]      # 当前 FLIT 缓冲 256B',
+    '       cur_off = 0      # 已填字节数',
+    '',
+    'function pack_tlp(tlp):',
+    '  need = header_len(tlp) + payload_len(tlp) + pad_align(tlp)',
+    '  # 规则1: TLP 不得跨 FLIT 边界拆分（header 不可拆；',
+    '  #        大 payload 由 Data Payload Flit 承载）',
+    '  if header_len(tlp) > space_left(cur_flit):',
+    '      emit_flit(cur_flit, pad_to_256=true)',
+    '      cur_off = 0',
+    '  emit_flit_header_part(tlp)          # OH/SH 类型',
+    '  while payload_left(tlp) >= full_dp_flit:',
+    '      emit_flit(cur_flit); emit_dp_flit(tlp.chunk(236))',
+    '  if payload_left(tlp) > 0:',
+    '      fill_tail_with_pad(tlp.rest)     # 规则2: 尾部 pad',
+    '      emit_flit(cur_flit); cur_off = 0',
+    '',
+    'function idle():                        # 规则3: 空闲发 NULL',
+    '  if no_pending_tlp: emit_null_flit()',
+    '```',
+    '**关键校验点**：pad 值的合法集合、多 TLP 拼包时类型兼容规则、Link Control 信息的搭载优先级（高于 TLP？抢占还是等待 flit 边界？）、ECRC 是否计入净荷。每一条都必须从规范原文确认后写死在模型里——参考模型"错得自信"比 DUT 错更危险。'
+  ].join('\n'),
+  verify: '用模型对拍：随机 TLP 流 → 模型输出 FLIT 流 vs DUT 输出，逐字节比对（含 pad 与 CRC 域）。'
+},
+{
+  id: 'k-m4-04', module: 'm4', title: 'PAM4 电平集合、格雷映射与判决',
+  tags: ['PAM4', '格雷码', '判决', '深度'],
+  body: [
+    'PAM4 的 4 个电平（归一化）：**-3、-1、+1、+3**（等间距，间距为 2）。NRZ 的电平是 -1/+1（间距 2）——所以 PAM4 眼高是 NRZ 的 1/3，SNR 损失约 9.5 dB。',
+    '**格雷映射**：相邻电平只差 1 bit。一种常见映射（电平 -3→+3 对应）：`11, 10, 00, 01`？——具体映射表以规范为准；关键性质是**判决错到相邻电平 = 单 bit 错**，这正是为 FEC 优化的。',
+    '**接收端处理链（现代 SerDes）**：CTLE（线性均衡）→ ADC 采样 → DSP（DFE/MLSE 类判决反馈）→ 符号判决 → 解映射。协议层验证不需要建 DSP 模型，但需要理解：',
+    '- 判决错误的**相关性**：一个噪声尖峰可能污染连续符号（burst），这是 precoding + 交织存在的理由。',
+    '- 符号率的确定性：32 GBaud 恒定节奏是 FLIT/FEC 时延可预测的物理基础。',
+    '**验证接口**：PHY 层仿真中，协议侧关心的是"符号流中的错误分布"——注错模型应支持"独立随机 + 突发 + 周期性"三种错误分布，分别检验 FEC 交织的兜底能力。'
+  ].join('\n'),
+  verify: '把"PAM4 符号错误分布模型"做成了独立组件，供 FEC/重传验证复用；覆盖单 bit 错（格雷邻位）与跨符号 burst 错两类。'
+},
+{
+  id: 'k-m4-05', module: 'm4', title: '链路 BER 预算与 FEC/重传的联合设计',
+  tags: ['BER', 'FEC', '预算', '深度'],
+  body: [
+    '**误码预算链**（数量级概念，非精确规范值）：',
+    '- PAM4 裸信道 BER：约 **1e-4 ~ 1e-6**（取决于信道插损与均衡质量）。',
+    '- 经过 FEC（纠 8 符号/码字）后：残余 BER 大幅下降，但仍不足以独立达标。',
+    '- FEC 不可纠的 FLIT 走 First Retry 重传 → 最终等效 BER 达到 PCIe 要求（**1e-12 量级目标**甚至更严）。',
+    '',
+    '**联合设计的三个自由度**：',
+    '- FEC 强度（码率 528/544 ≈ 97%）：纠错能力 vs 开销。',
+    '- 重传策略：First Retry（快速、常数延迟）兜底低概率事件。',
+    '- 物理层均衡（preset 协商）：把裸 BER 压进 FEC 能兜住的区间。',
+    '',
+    '**对比以太网 112G 的重 FEC**：以太网用 RS(544,514) 多码字串联 + 更高延迟换取更强纠错（适合无重传的 WAN 链路）；PCIe 选择轻 FEC + 重传，因为 PCIe 链路两端都是本地设备、重传代价低、时延敏感。**设计约束决定协议形态**——这是读协议时永远要问的问题。',
+    '**验证落地**：错误注入强度应扫描"裸 BER 等效区间"（每 flit 0~10+ 符号错），统计吞吐/延迟分布，确认 First Retry 风暴阈值前吞吐下降曲线符合预期。'
+  ].join('\n'),
+  verify: '性能回归：注错率 × 负载强度二维扫描，输出吞吐/时延 P99 曲线，作为 silicon 后 SI 调试的对照基线。'
+},
+{
+  id: 'k-m5-05', module: 'm5', title: 'RS(544,528) 数学基础与交织设计',
+  tags: ['RS', 'FEC', '数学', '交织', '深度'],
+  body: [
+    '**符号域**：RS 码定义在 GF(2^10)（1024 个符号元素），每符号 10 bit。码字 = 544 符号 = 528 信息 + 16 校验。',
+    '**纠错能力**：最小距离 d = 16 - 528 + 544 - 528 + 1？——RS 码最小距离 = 校验符号数 + 1 = 17，可纠 t = floor(17-1)/2 = **8 个符号错**（或检测 16 个）。',
+    '**为什么选 10 bit 符号**：PAM4 每 symbol 携带 2 bit，5 个链路符号 = 1 个 GF 符号；10 bit 符号让"单个 GF 符号错"对应 5 个相邻链路符号错——**把 burst 错误局部化**，配合交织把大 burst 摊薄到多个码字，每个码字 ≤8 错即可全纠。',
+    '**交织**：校验符号跨 FLIT 分布（不是集中存放），相邻码字的数据交错排列。效果：连续 100 个符号的 burst 错可能只给每个码字贡献 2~3 个错——远小于 8 的上限。',
+    '**precoding 的配合**：信道反射造成的错误在符号域是相关的；precoding 把相关性打散成孤立错误，让"随机纠错"假设成立。两者是同一防御体系的两个环节。',
+    '**验证要点**：RS 译码器本身（GF 运算、伴随式、纠错位置）应该用形式验证或独立 C 模型等价性检查；协议层验证关注的是错误分布 → 纠错结果 → 重传触发的**端到端行为**。'
+  ].join('\n'),
+  verify: 'FEC 单元验证：注入 1~8 错（全纠）、9 错（检测/误纠路径）、burst 跨交织分布（分摊后 ≤8 全纠）。误纠必须被 CRC-2 拦截。'
+},
+{
+  id: 'k-m5-06', module: 'm5', title: 'First Retry vs 传统 Replay：机制对比与序列管理',
+  tags: ['重传', 'First Retry', 'Replay', '对比', '深度'],
+  body: [
+    '| 维度 | 传统 Replay（Gen1-5） | First Retry（Gen6） |',
+    '| 触发 | Nak DLLP 或 REPLAY_TIMER 超时 | FEC 不可纠 + CRC 判决失败，立即请求 |',
+    '| 重传单位 | TLP（从 NAK 序列号起全部在途 TLP） | FLIT（固定 256B） |',
+    '| 判决延迟 | 接收→Nak→发送方处理，含超时兜底 | 常数、流水线内完成 |',
+    '| 无效 TLP 处理 | LCRC 错即丢 | FEC 先救，救不了才丢 |',
+    '| 升级路径 | REPLAY_NUM 滚动 → Recovery | 连续 First Retry 失败 → Recovery |',
+    '',
+    '**序列管理细节**（Gen6 FLIT 序列）：',
+    '- FLIT 序列号/确认信息搭载在 Link Control Flit 中；接收端检测到序列断裂 → 丢弃后续直到补齐（与传统 TLP 序列号逻辑同构）。',
+    '- 重传期间**新到的确认**与**重传数据**可能交叠：发送方必须保证重传流与新流的边界清晰（不可重传已确认部分）。',
+    '- 与 L0p 的交互：重传恰逢 lane 收缩时，重传数据要按收缩后的 lane 布局重新 striping——复合场景是验证重点。',
+    '**为什么延迟可控**：FLIT 固定 256B + FEC 结构固定 → 从"发现坏 FLIT"到"重传完成"的周期数是常数，P99 时延可写进 QoS 契约。'
+  ].join('\n'),
+  verify: '断言 First Retry 端到端延迟上界；重传 × L0p 收缩复合用例；重传流与确认流交叠的边界用例。'
+},
+{
+  id: 'k-m6-03', module: 'm6', title: 'L0p 过程细节与验证时序点',
+  tags: ['L0p', '过程', '时序', '深度'],
+  body: [
+    'L0p 的两个操作方向：**Downshift**（收缩活动 lane 数）与 **Upshift**（恢复）。过程要点：',
+    '- 协商发生在 L0 内、以 FLIT 边界为切换点——数据流不断，Lane 布局在约定边界切换。',
+    '- 切换前后，FLIT 的字节到 lane 的 striping 映射改变；协议保证切换窗口内的数据完整性（有专门的 L0p 控制信息承载切换约定）。',
+    '- 触发方：软件显式请求或硬件自治策略（带宽/功耗权衡）；双方需交换能力（支持的最小活动 lane 数等）。',
+    '- 与 ASPM 的关系：L0p 管"细粒度伸缩"，L1 管"深度睡眠"；L0p 可作为进入 L1 前的中间步（先收缩到最小宽度再进 L1）。',
+    '',
+    '**验证时序点清单**：',
+    '- 切换边界的 FLIT 完整性：切换点两侧的 FLIT 均须完整（不可半途重排）。',
+    '- 收缩期间的重传/FEC 行为不变（错误判决逻辑与宽度无关）。',
+    '- Upshift/Downshift 的握手超时路径（对端不响应 → 回退/报错）。',
+    '- 软件寄存器与硬件自治同时请求的仲裁。',
+    '- 连续快速往返切换（stress）：状态机无死锁、无泄漏。'
+  ].join('\n'),
+  verify: '把"切换点 × in-flight 事务 × 注错"做三维交叉用例；参考模型按切换约定同步更新 striping。'
+},
+{
+  id: 'k-m7-03', module: 'm7', title: '共享流控池记账示例（数字演练）',
+  tags: ['流控', '共享池', '示例', '深度'],
+  body: [
+    '设共享池总容量 **64 个 credit**（FLIT 粒度），P/NP/Cpl 共享，且规范要求为防饿死设置保底约束（示意）：NP 与 Cpl 各自至少保留 8。某时刻状态：',
+    '- 已授予：P=30，NP=10，Cpl=16（合计 56，池剩余 8）',
+    '- 已归还：P=12，NP=4，Cpl=6',
+    '- 在途占用（未归还）：P=18，NP=6，Cpl=10',
+    '',
+    '**发送判定**：',
+    '- 发 P：需 P 剩余额度（30-18=12）> 0 且池有余量 → 允许（同时不能挤掉 NP/Cpl 的保底：池剩余须减去保底占用后仍够）。若本笔会侵占保底区 → 阻塞等待归还。',
+    '- 发 NP：剩余 4，够发 1 FLIT 粒度事务 → 允许。',
+    '- Cpl 类推。',
+    '',
+    '**checker 断言集**：',
+    '- `sum(granted) - sum(returned) ≤ POOL_SIZE`（池不透支）。',
+    '- 各类 `granted - returned ≥ 0`（单类不透支）。',
+    '- 保底约束：当某类饥饿时长超阈值时，其他类不得继续挤占（饿死检测器）。',
+    '- 归还节奏：归还时延不超规范上限（防死锁条款）。',
+    '',
+    '独立模式 vs 共享模式的**选择字段**在训练/配置阶段协商——两种模式都要验证（互操作时可能两端策略不同）。'
+  ].join('\n'),
+  verify: '本卡数字可直接做成参数化 UVM sequence：随机化授予/归还节奏，checker 盯全部不变式。'
+},
+{
+  id: 'k-m8-04', module: 'm8', title: '均衡参数深入：Preset、Coefficient 与请求流程',
+  tags: ['均衡', 'preset', 'coefficient', '深度'],
+  body: [
+    '**TX 均衡模型**：发送端三抽头 FFE，系数 `C-1, C0, C+1`（各 6 bit，约束 |C-1|+|C0|+|C+1| ≤ 合法范围且总增益归一），对应"pre-cursor / main / post-cursor"去加重。',
+    '**Preset**：把常用系数组合编号为 **Preset 0~9**（4 bit 编码），训练时先按 preset 粗调、再按显式 coefficient 细调。Preset 与系数的具体映射表在规范物理层章节（EQ 章节）——Gen6 的 PAM4 preset 集合与 NRZ 独立定义。',
+    '**请求流程**（Gen3-5，Gen6 同构扩展）：',
+    '- 下行接收端通过 TS2/TS1 的 EQ 字段向上行发送端发请求：`Preset 编号` 或 `显式系数（3×6bit）+ 使用标志`。',
+    '- 上行端应用新系数后发带"已更新"标志的 TS；下行端评估眼图/误码，继续请求或确认完成。',
+    '- 每个 Phase 有独立超时；超时 → 重试或放弃 EQ（降级速率）。',
+    '**验证关注**：',
+    '- 系数合法性检查（越界系数请求 → 对端拒绝/保持旧值）。',
+    '- 请求-应用-确认的握手完整性（丢一步 → 超时路径）。',
+    '- Retimer 透明转发不破坏 EQ 握手时序。',
+    '- Gen5→Gen6 速率切换时 preset 空间切换（NRZ preset ≠ PAM4 preset）。'
+  ].join('\n'),
+  verify: '把 EQ 做成独立 agent：可注错（非法系数、超时不响应、中途反悔），覆盖每个 Phase 的成功/超时/回退全路径。'
+},
+{
+  id: 'k-m8-05', module: 'm8', title: 'Loopback 状态机与合规测试应用',
+  tags: ['Loopback', '合规', 'BERT', '深度'],
+  body: [
+    '**进入流程**：主设备在 TS1 中置 Loopback 位发送 → 从设备回带 Loopback 位的 TS1/TS2 确认 → 双方进入 Loopback.Active：主发已知 pattern，从设备逐 bit 回环。退出需交换带 Exit 标志的 TS。',
+    '**两种环回路径**：',
+    '- **内部环回（near-end）**：PHY 内部 TX→RX 短接，隔离数字逻辑验证。',
+    '- **远端环回（far-end）**：对端设备回环，覆盖完整信道（含 Retimer）。',
+    '**合规测试用法**：PCI-SIG 一致性测试中，被测设备被置入 Loopback，测试仪（BERT）注入 PRBS/合规 pattern 测眼图、抖动容限、BER。近端/远端环回组合定位问题在 PHY 数字、模拟前端还是信道。',
+    '**验证角色**：RTL 验证中 Loopback 用例相对简单（状态覆盖 + 数据回环一致性）；但**要验证异常退出**——环回中掉电/复位/对端消失，必须能干净退出不留悬挂状态。',
+    '**Gen6 差异**：PAM4 下 BER 测试需要考虑符号错误统计（不是纯 bit），Retimer Folio Flit 在环回中的处理也要覆盖。'
+  ].join('\n'),
+  verify: 'Loopback 状态覆盖（Entry/Active/Exit + 异常退出）；回环数据一致性 checker。'
+},
+{
+  id: 'k-m9-03', module: 'm9', title: 'TLP 前缀体系与 PASID',
+  tags: ['前缀', 'PASID', '扩展', '深度'],
+  body: [
+    'TLP 前缀是"附加在 TLP 头前面的可选字段"，分两类：',
+    '- **End-End Prefix**：端到端有效，中间代理不得修改/删除（如 PASID 前缀——进程地址空间标识，配合 SVA/SVM 让多个进程共享一个设备）。',
+    '- **Local Prefix**：逐跳处理（如某些路由/多播语义前缀）。',
+    '**PASID 工作机制**：设备驱动为每个进程绑定 PASID → 设备发出的 TLP 带 PASID 前缀 → IOMMU 按 PASID 查对应页表 → 不同进程的同一设备 DMA 互相隔离。AI 场景（多进程共享加速器）的刚需。',
+    '**与 Gen6 的关系**：FLIT 模式下前缀随 TLP 一起装配进 FLIT 净荷；前缀数量有上限（规范定义最大前缀数），装配算法需处理"头 + 前缀 + 数据"的布局。',
+    '**验证关注**：前缀存在/缺失的排列组合、非法前缀顺序、前缀与 ECRC 的覆盖关系、PASID 空间耗尽行为。'
+  ].join('\n'),
+  verify: 'SVA/参考模型把前缀当一等公民解析；跨 IOMMU 的端到端用例（PASID 隔离正确性）属于系统级验证。'
+},
+{
+  id: 'k-m9-04', module: 'm9', title: 'UIO 语义深入：放松了什么、保留了什么',
+  tags: ['UIO', '排序', '语义', '深度'],
+  body: [
+    '**经典排序的瓶颈回顾**：Cpl 不得越过 Posted 写（同 TC 同路径）——在多路径 fabric 中，一条慢路径的 Posted 写会拖住所有后续 Cpl，并行度被串行化。',
+    '**UIO 的放松**：允许被显式标记的 IO 流（UIO 流）相对其他事务乱序转发，包括跨路径。交换器可自由重排 → 聚合吞吐显著提升。',
+    '**保留的约束**（不能放松的部分）：',
+    '- UIO 流内部的顺序仍需保证（同一流内不得乱序，除非进一步子语义）。',
+    '- 与**缓存一致性**交互的边界：UIO 语义假定上层（驱动/软件）保证一致性与同步——乱序可见性由软件 fence 管控。',
+    '- 非 UIO 设备完全无感：能力协商失败 → 全部回退经典排序。',
+    '**与 Relaxed Ordering 的区别**：RO 只放松个别"写-写"限制且作用域同路径；UIO 是跨路径的、成体系的乱序框架，且引入显式的流标记/能力协商。',
+    '**验证重点**：',
+    '- 排序 checker 必须参数化（UIO 能力协商结果 → 套用不同规则矩阵）。',
+    '- 乱序转发下 scoreboard 的比对策略：按流（flow）归序后再比对，而不是全局时序。',
+    '- 上层一致性：乱序到达的写对软件的可见顺序（配合内存屏障语义的用例）。'
+  ].join('\n'),
+  verify: '双拓扑用例：单路径（UIO 无收益但无副作用）+ 交换 fabric 多路径（乱序转发发生），各配排序矩阵 checker。'
+},
+{
+  id: 'k-m10-07', module: 'm10', title: '双视角参考模型设计（TLP↔FLIT）',
+  tags: ['参考模型', 'scoreboard', '架构', '深度'],
+  body: [
+    '**架构**：两个独立模型 + 两个比对点。',
+    '- 发送侧模型 `tlp2flit`：输入 TLP 流（含属性/长度/ECRC），输出 FLIT 字节流。内含装配算法（见 M3 伪代码）、CRC 计算器、序列/确认记账。',
+    '- 接收侧模型 `flit2tlp`：输入 FLIT 符号流（monitor 从 PHY 接口采集），先模拟 FEC 纠错（可选：简化为"按注错清单改写"），再 CRC 判决、解包还原 TLP 流。',
+    '- **比对点 1（flit 边界）**：模型 FLIT 字节流 vs DUT FLIT 流逐字节一致。',
+    '- **比对点 2（TLP 边界）**：还原出的 TLP 流与原始激励一致（顺序按排序规则归序后比对）。',
+    '**为什么两个都要**：只比对 TLP 流会漏掉"FLIT 打包错误但 TLP 恰好可还原"的 bug（如非法 pad、错位的 Link Control 搭载）；只比对 FLIT 流会在有合法重传/纠错时误报。双比对点 = 高灵敏度 + 低误报。',
+    '**注错感知**：模型必须知道注错 agent 注入了什么（通过 analysis port 订阅），否则把"被注错的正确行为"判为 mismatch。',
+    '**实现建议**：SystemVerilog DPI 调 C/Python 模型，或纯 SV 实现（可控性好）；模型代码与 checker 解耦，方便移植到 emulation。'
+  ].join('\n'),
+  verify: '模型自测：先用模型生成的 FLIT 流喂 flit2tlp，应无损还原——模型自身的金标准测试。'
+},
+{
+  id: 'k-m10-08', module: 'm10', title: 'SVA 断言库扩展（Gen6 协议检查清单）',
+  tags: ['SVA', '断言', '清单', '深度'],
+  body: [
+    '协议层断言建议清单（挂在 monitor 信号上，与实现解耦）：',
+    '```',
+    '// 1. FLIT 节奏恒定（空闲期）',
+    'property p_flit_rate;',
+    '  @(posedge clk) (idle_mode) |=> (flit_start == $past(flit_start) + FLIT_PERIOD);',
+    'endproperty',
+    '',
+    '// 2. 不可纠错误必触发重传（First Retry 预算内）',
+    'property p_retry_latency;',
+    '  @(posedge clk) (fec_fail && crc2_fail) |-> ##[1:RETRY_BUDGET] retry_req;',
+    'endproperty',
+    '',
+    '// 3. 可纠错误不得触发重传',
+    'property p_fec_no_retry;',
+    '  @(posedge clk) (fec_corrected && !crc2_fail) |-> ##[1:8] !retry_req;',
+    'endproperty',
+    '',
+    '// 4. credit 不透支（共享池）',
+    'property p_pool_no_overdraft;',
+    '  @(posedge clk) 1 |-> (sum_granted - sum_returned) <= POOL_SIZE;',
+    'endproperty',
+    '',
+    '// 5. L0p 切换边界 FLIT 完整（用计数器比对该 FLIT 的字节数）',
+    '// 6. 重传序列号单调不减',
+    '// 7. LTSSM 非法转移（用 fsm 状态编码的合法转移表驱动）',
+    '// 8. NULL flit 只出现在空闲或填充位置',
+    '```',
+    '**落地建议**：断言库按模块分文件管理，与覆盖组一一对应（断言失败 → 自动标记覆盖 bin 为 fail 而非 pass）。'
+  ].join('\n'),
+  verify: '断言密度指标：每个协议特性至少 1 条 end-to-end 断言 + 若干局部断言；仿真报告里断言通过率单独统计。'
+},
+{
+  id: 'k-m10-09', module: 'm10', title: '功能覆盖组：SystemVerilog covergroup 实例',
+  tags: ['覆盖率', 'covergroup', '代码', '深度'],
+  body: [
+    '```',
+    'covergroup cg_err @(posedge clk);',
+    '  cp_type: coverpoint err_type { bins corr[]  = {FEC_CORR, CRC1_ONLY};',
+    '                                 bins uncorr = {FEC_UNCORR}; }',
+    '  cp_count: coverpoint err_count { bins one   = {1};',
+    '                                   bins few   = {[2:7]};',
+    '                                   bins edge  = {8};      // RS 纠错上限',
+    '                                   bins over  = {[9:16]}; }',
+    '  cp_state: coverpoint ltssm_state { bins l0 = {L0}; bins l0p = {L0P};',
+    '                                     bins rec = {RECOVERY}; }',
+    '  cx_err_x_state: cross cp_type, cp_count, cp_state {',
+    '    // 忽略不可达组合，防止假覆盖',
+    '    ignore_bins invalid = binsof(cp_state) intersect {RECOVERY}',
+    '                        && binsof(cp_count) intersect {[1:16]}; }',
+    'endgroup',
+    '',
+    'covergroup cg_flit @(posedge clk);',
+    '  cp_type: coverpoint flit_type { bins all[6] = {OH, SH, DP, LC, RF, NL}; }',
+    '  cp_fill: coverpoint fill_ratio { bins empty  = {0};',
+    '                                   bins part[] = {[1:99]};',
+    '                                   bins full   = {100}; }',
+    '  cx: cross cp_type, cp_fill;',
+    'endgroup',
+    '```',
+    '**收敛技巧**：cross bins 过多是假覆盖的重灾区——用 `ignore_bins` 明确排除不可达组合；对 `part[]` 这类大区间用采样统计而不是穷举 bin。'
+  ].join('\n'),
+  verify: '每个 covergroup 与验证计划条目双向追溯：计划里的每一行都能指到具体 bin，反之亦然。'
+},
+{
+  id: 'k-m10-10', module: 'm10', title: '形式验证在 PCIe 6.0 中的切入点',
+  tags: ['formal', '等价性', '深度'],
+  body: [
+    '仿真穷不尽的组合，formal 可以在某些局部"证完就走"：',
+    '- **FEC 译码器等价性**：RS 译码器 RTL vs 高层 C 模型，枚举全部错误模式（1~8 错位置组合是有限的、可证尽的）——天然的 formal 题。',
+    '- **CRC 覆盖域**：断言"任何单 bit/双 bit 差异必然导致 CRC 变化"（CRC 的数学性质），证 CRC 实现与规范多项式一致。',
+    '- **FLIT 装配器协议合规**：把装配规则（不跨边界、pad 合法、NULL 节奏）写成性质，证 RTL 在任意 TLP 输入序列下不违反。',
+    '- **流控不变式**：`consumed ≤ granted`、池不透支——对任意 credit 归还时序成立（归纳证明，不怕 corner case 漏掉）。',
+    '- **LTSSM 死锁自由**：从任意合法状态出发总能到达 L0 或报错（活性性质需要 fairness 约束，难度较高但价值大）。',
+    '- **仲裁公平性**：共享池的保底约束——NP/Cpl 不会被 P 无限饿死。',
+    '**落地顺序建议**：先做 FEC/CRC 这类"纯函数型"单元（ROI 最高），再做装配器/流控这类"有状态"的（需要好的抽象模型），LTSSM 活性放最后。'
+  ].join('\n'),
+  verify: 'formal 通过的模块在仿真回归里可以降权（不必重复轰炸 corner），把仿真资源挪到系统集成场景。'
+},
+{
+  id: 'k-m10-11', module: 'm10', title: '性能验证与 emulation 场景设计',
+  tags: ['性能', 'emulation', 'QoS', '深度'],
+  body: [
+    '功能正确 ≠ 性能达标。6.0 性能验证的量化指标：',
+    '- **吞吐**：x16 满配、大 payload 顺序流的目标吞吐（理论 ~121 GB/s 单向，打 8~9 折合理）；小 payload 随机流的有效吞吐。',
+    '- **时延**：TLP 端到端延迟分布（P50/P99）；First Retry 引入的时延抖动上界；L0p 收缩/恢复的过渡时延。',
+    '- **QoS**：多 TC 场景下高优先级 TC 的时延保障（VC 调度策略验证：严格优先级/WFQ 行为符合设计）。',
+    '- **并发**：tag 用尽场景（1024 个 outstanding 读）的行为与恢复。',
+    '**emulation/FPGA 场景**：RTL 仿真跑不动 10^9 量级事务，性能与长稳靠 Palladium/Zebra/P Protium 类平台：',
+    '- 用真实软件栈（驱动 + 应用）跑长稳，抓偶发挂死。',
+    '- 信道/PHY 用虚拟化或 FPGA 原型替代，协议层全 RTL。',
+    '- 性能计数器（吞吐/延迟直方图）作为 IP 的验证交付物之一，从 RTL 就要设计好。',
+    '**回归策略**：性能用例单独成 suite，指标用断言/后处理脚本判定，趋势入库（每次提交对比基线）。'
+  ].join('\n'),
+  verify: '性能指标断言化：`throughput >= X && p99_latency <= Y`，让性能回归能进 CI 门禁。'
+},
+{
+  id: 'k-m10-12', module: 'm10', title: 'Gen6 项目常见 Bug 模式 Top 10',
+  tags: ['bug', '经验', '清单', '深度'],
+  body: [
+    '从业界 6.0/高速 IP 项目反复出现的 bug 模式中提炼（验证计划应针对性加检查）：',
+    '1. **FLIT 打包边界**：差 1 字节放不下时的 pad/等待实现错——最高频。',
+    '2. **CRC 覆盖域错位**：CRC-1/2 的覆盖边界与规范差一个字段，正常流测不出，特定长度才触发。',
+    '3. **FEC 误纠不拦截**：错误被"纠"成另一个值后 CRC-2 漏检（兜底断言缺失导致漏测）。',
+    '4. **模式切换残留**：32↔64 GT/s 切换后旧模式的 FIFO/状态残留污染新流。',
+    '5. **L0p 竞态**：收缩请求与重传/流控更新同周期到达的仲裁漏洞。',
+    '6. **credit 归还丢失**：异常路径（丢弃、重传）中归还计数器少加一次 → 逐渐饿死（长稳才暴露）。',
+    '7. **EQ 超时参数**：Phase 超时用仿真值写成硅后值，或反之；降速回退路径死循环。',
+    '8. **poisoned TLP 处理**：EP=1 的 TLP 被当成正常数据交付（缺 poison 传播 checker）。',
+    '9. **跨代协商**：与 Gen5 对端互操作时能力位误读（自家 IP 自测永远发现不了）。',
+    '10. **性能计数器溢出**：64bit 计数器截断/复位语义错，硅后性能数据不可信。',
+    '',
+    '共性：**都与边界/异常路径相关，正常通路全部绿灯**。这验证了"6.0 验证价值在错误处理"的判断。'
+  ].join('\n'),
+  verify: '把 Top 10 直接转成 10 个定向用例文件夹，作为新项目验证计划的起点。'
+},
+{
+  id: 'k-m11-04', module: 'm11', title: '规范章节地图与精读路线',
+  tags: ['spec', '阅读', '地图', '深度'],
+  body: [
+    'PCIe Base Specification 的组织方式（各代特性以 ECN 或版本增量融入正文）：',
+    '- **事务层章节**：TLP 格式（Header 图、Fmt/Type 表）、流控、排序规则、TLP 前缀、AtomicOp、UIO（6.1 增补）。',
+    '- **数据链路章节**：DLLP、Ack/Nak/Replay、初始化流控；**6.0 在此章节大幅改写**：FLIT 模式、FEC、双 CRC、First Retry。',
+    '- **物理层章节**：有序集（TS1/TS2）、LTSSM、均衡（EQ）、Loopback；6.0 增补 PAM4 信令、PAM4 preset、L0p。',
+    '- **电源管理章节**：D/L 状态、ASPM、PME；L0p 的协议细节分布在此与物理层章节。',
+    '- **配置/软件章节**：配置空间、capability、ECAM 相关（部分在系统章节）。',
+    '- **附录**：时序参数表、事务排序矩阵、合规模式定义——验证工程师最常翻的三个附录。',
+    '',
+    '**精读路线（对应本系统模块）**：',
+    '1. 先读各章 Overview + 协议栈图（对应 M1/M2）。',
+    '2. FLIT/FEC/First Retry 小节逐字读（对应 M3/M5）——6.0 的灵魂。',
+    '3. EQ 与 L0p 小节（对应 M6/M8）。',
+    '4. 排序矩阵附录对照 M9 的 UIO。',
+    '5. 时序参数附录边读边做进表格（断言/超时用例的参数来源）。',
+    '',
+    '提醒：本系统的卡片是"导航图"，规范原文才是"法律条文"——两者对照阅读，发现出入以规范为准。'
+  ].join('\n'),
+  verify: '读规范时给每节标注"已验证/未验证"——未验证章节就是下一个用例清单。'
+},
 ];
 
 /* 让旧浏览器/严格模式都安全 */

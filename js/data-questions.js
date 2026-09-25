@@ -508,6 +508,297 @@ const QUESTIONS = [
   answer: [0, 1, 2],
   explain: '6.0 的验证价值集中在错误处理与打包边界；只有 happy path 的环境在 6.0 项目里几乎没有意义（VIP 自带的示例就能覆盖）。'
 },
+/* ================= 深度题（对应规范级卡片） ================= */
+
+/* M1 深度（9题） */
+{
+  id: 'qd-m1-01', module: 'm1', type: 'single',
+  q: 'TLP Header 的 DW0 中，Length 字段（以 DW 计的 payload 长度）占多少位？',
+  options: ['6 bit', '8 bit', '10 bit', '12 bit'],
+  answer: 2,
+  explain: 'Length 为 10 bit，位于 DW0 低 10 位，最大 1024 DW = 4KB payload。Length=0 对 MemRd 有特殊含义（读 1 DW）。'
+},
+{
+  id: 'qd-m1-02', module: 'm1', type: 'single',
+  q: 'Fmt[1:0] = 10b 表示什么？',
+  options: ['3DW Header 无数据', '4DW Header 无数据', '3DW Header 带数据', '4DW Header 带数据'],
+  answer: 2,
+  explain: 'Fmt：00=3DW无数据、01=4DW无数据、10=3DW带数据、11=4DW带数据。所以 IOWr（3DW 带数据）的 Fmt=10。'
+},
+{
+  id: 'qd-m1-03', module: 'm1', type: 'single',
+  q: 'CfgRd0 与 CfgRd1 的区别是？',
+  options: [
+    '一个带数据一个不带',
+    'Type 0 用于访问下游端点的配置空间，Type 1 用于访问下游桥后面的设备配置空间',
+    '一个 32 位地址一个 64 位地址',
+    '只差 ECRC 是否存在'
+  ],
+  answer: 1,
+  explain: '配置事务由 RC 发起：目标是直连下游总线上的设备用 Type 0（00100），目标是桥后总线的设备用 Type 1（00101），桥根据 Type 1 决定是否转发并转换成 Type 0。'
+},
+{
+  id: 'qd-m1-04', module: 'm1', type: 'single',
+  q: 'DLLP 的总长度（链路上传输的字节数）是？',
+  options: ['6 字节', '8 字节', '12 字节', '变长'],
+  answer: 1,
+  explain: 'DLLP 是 8 字节定长帧：1B Type + 3B 信息 + 2B CRC16（以及填充/扩展），无序列号、不需要 Ack。'
+},
+{
+  id: 'qd-m1-05', module: 'm1', type: 'judge',
+  q: '流控 credit 字段中"全 1"值（如 12 bit 的 FFFh）表示无限 credit。',
+  options: ['正确', '错误'],
+  answer: 0,
+  explain: '全 1 是规范定义的无限 credit 编码，常用于 header credit 或 buffer 无限大的设计场景，此时该类 TLP 发送不受 credit 约束。'
+},
+{
+  id: 'qd-m1-06', module: 'm1', type: 'single',
+  q: 'UpdateFC DLLP 中携带的 credit 数值语义是？',
+  options: [
+    '本次新增归还的 credit 数（增量）',
+    '从链路训练以来累计归还的 credit 总量',
+    '当前剩余可用 credit',
+    '当前 buffer 占用量'
+  ],
+  answer: 1,
+  explain: 'UpdateFC 携带累计值，发送方用"授予累计 - 已消耗累计"算可用量。累计语义天然容忍单次 DLLP 丢失，后续更新会覆盖。'
+},
+{
+  id: 'qd-m1-07', module: 'm1', type: 'multi',
+  q: '经典排序规则中（同一 TC、同一路径），哪些"超越"是禁止的？',
+  options: ['Posted 写超越更早的 Posted 写', 'Completion 超越更早的 Posted 写', 'NP 事务超越更早的 NP 事务', 'NP 事务超越更早的 Posted 写'],
+  answer: [0, 1, 2],
+  explain: '禁止的三条：P 不得越过 P；Cpl 不得越过 P；NP 不得越过 NP。允许的：NP 可越过 P 和 Cpl；Cpl 可越过 NP。这正是死锁避免的核心设计。'
+},
+{
+  id: 'qd-m1-08', module: 'm1', type: 'single',
+  q: 'ECAM 机制下，总线 5、设备 3、功能 2 的配置空间偏移 0x10 的地址计算是？',
+  options: [
+    'MMCFG基址 + 5×2^20 + 3×2^15 + 2×2^12 + 0x10',
+    'MMCFG基址 + 5×2^16 + 3×2^11 + 2×2^8 + 0x10',
+    'MMCFG基址 + 0x53210',
+    'MMCFG基址 + 5×3×2×0x10'
+  ],
+  answer: 0,
+  explain: 'ECAM 地址 = 基址 + (Bus<<20 | Dev<<15 | Func<<12) + offset。256 条总线 × 32 设备 × 8 功能 × 4KB = 256MB 映射空间。'
+},
+{
+  id: 'qd-m1-09', module: 'm1', type: 'single',
+  q: '调试时想把链路锁定在 8 GT/s 不让它爬升到 32 GT/s，应该改哪个寄存器字段？',
+  options: [
+    'Link Control 中的 ASPM 控制位',
+    'Device Control 中的 MPS 字段',
+    'Link Control 2 中的 Target Link Speed 字段',
+    'MSI-X 的 BIR 字段'
+  ],
+  answer: 2,
+  explain: 'LinkCtrl2 的 Target Link Speed[3:0]（PCIe Capability +2Ch 处）设定目标速率，训练时链路不会超过它——是链路调试最常用的"限速开关"。'
+},
+
+/* M2/M3 深度（4题） */
+{
+  id: 'qd-m2-01', module: 'm2', type: 'multi',
+  q: '关于 Gen5→Gen6 的逐层变化，正确的有？',
+  options: [
+    '事务层 TLP 格式基本不变，但需要被装配进 FLIT',
+    '数据链路层的独立 DLLP 物理帧消失，由 Link Control Flit 承载链路管理信息',
+    '物理层从 128b/130b NRZ 换成 PAM4',
+    '排序规则在 6.0 基线中被完全废除'
+  ],
+  answer: [0, 1, 2],
+  explain: 'D 错误：6.0 基线保留经典排序；6.1 的 UIO 是"可选放松"而非废除，且需要能力协商。A/B/C 即"TL 不动、DL 重来、PL 换血"。'
+},
+{
+  id: 'qd-m3-01', module: 'm3', type: 'single',
+  q: '公开资料普遍引用的 256B FLIT 划分是？',
+  options: [
+    '236B 净荷 + 6B 双 CRC + 14B FEC 校验',
+    '240B 净荷 + 8B CRC + 8B FEC',
+    '128B 净荷 + 64B CRC + 64B FEC',
+    '224B 净荷 + 16B CRC + 16B FEC'
+  ],
+  answer: 0,
+  explain: '236+6+14=256：CRC-1（2B）保护 header 区、CRC-2（4B）保护净荷、14B 承载 RS(544,528) 校验符号（跨 FLIT 交织）。精确边界以规范为准。'
+},
+{
+  id: 'qd-m3-02', module: 'm3', type: 'judge',
+  q: 'FLIT 模式下速率切换（32↔64 GT/s）时，切换瞬间的 in-flight TLP 可以直接丢弃重发，无需特殊处理。',
+  options: ['正确', '错误'],
+  answer: 1,
+  explain: '模式切换（非 FLIT ↔ FLIT）伴随链路层协议模式变化，规范要求切换前处理好在途数据（确认/清空），验证中这是必须覆盖的定向场景。'
+},
+{
+  id: 'qd-m3-03', module: 'm3', type: 'multi',
+  q: 'TLP→FLIT 装配参考模型中，必须从规范确认（不能想当然）的规则包括？',
+  options: ['pad 字节的合法值集合', '多 TLP 拼包的类型兼容规则', 'Link Control 信息的搭载优先级', 'FLIT 的 lane striping 字节序'],
+  answer: [0, 1, 2, 3],
+  explain: '四条全选。参考模型"错得自信"比 DUT 错更危险——所有规则必须以规范原文为准并标注条款来源。'
+},
+
+/* M4/M5 深度（5题） */
+{
+  id: 'qd-m4-01', module: 'm4', type: 'single',
+  q: 'PAM4 的 4 个电平（归一化）与相邻电平间距是？',
+  options: ['电平 ±1、±2，间距 1', '电平 -3/-1/+1/+3，间距 2', '电平 0/1/2/3，间距 1', '电平 ±0.5、±1.5，间距 1'],
+  answer: 1,
+  explain: '等间距四电平 -3/-1/+1/+3（间距 2），NRZ 是 ±1（间距 2）——所以 PAM4 眼高是 NRZ 的 1/3，SNR 损失约 9.5dB。'
+},
+{
+  id: 'qd-m4-02', module: 'm4', type: 'judge',
+  q: 'PAM4 采用格雷映射后，判决错到相邻电平只会产生单 bit 错，这减轻了 FEC 的纠错负担。',
+  options: ['正确', '错误'],
+  answer: 0,
+  explain: '格雷码保证相邻电平的 2bit 组合只差 1 bit——最常见的判决错误（错到相邻电平）只损坏 1 bit，配合 RS 码符号纠错效率更高。'
+},
+{
+  id: 'qd-m5-01', module: 'm5', type: 'single',
+  q: 'RS(544,528) 在 GF(2^10) 上定义，其纠错能力（每个码字可纠正的符号错数）是？',
+  options: ['4 个符号', '8 个符号', '16 个符号', '528 个符号'],
+  answer: 1,
+  explain: '16 个校验符号 → 最小距离 17 → 可纠 floor(16/2)=8 个符号错。这是轻量 FEC 的设计平衡点：开销小（约 3% 码率损失）、纠错配合重传够用。'
+},
+{
+  id: 'qd-m5-02', module: 'm5', type: 'multi',
+  q: '关于 FEC 交织（interleaving）的设计意图，正确的有？',
+  options: [
+    '把连续 burst 错误摊薄到多个码字，每个码字错数不超过 8',
+    '让校验符号跨 FLIT 分布，而非集中存放',
+    '10 bit GF 符号对应 5 个链路符号，把错误局部化',
+    '交织可以替代重传机制'
+  ],
+  answer: [0, 1, 2],
+  explain: 'D 错误：交织提高 burst 容忍度，但不能替代重传——超出纠错能力的错误仍需 First Retry。A/B/C 是交织+符号宽度的三重防御逻辑。'
+},
+{
+  id: 'qd-m5-03', module: 'm5', type: 'single',
+  q: '一个 FLIT 被注入 9 个符号错（RS 纠错上限 8），最可能的行为链是？',
+  options: [
+    '静默纠正，无任何反应',
+    'FEC 不可纠 → CRC 判决 → 丢弃该 FLIT → First Retry 重传',
+    '直接进入 Recovery 重新训练',
+    '向上层交付带错误标记的数据'
+  ],
+  answer: 1,
+  explain: '超纠错能力 → CRC-2 拦截 → 整 FLIT 丢弃并触发 First Retry（常数延迟重传）。连续失败才升级 Recovery。绝不允许交付未确认的数据。'
+},
+
+/* M6/M7/M8 深度（5题） */
+{
+  id: 'qd-m6-01', module: 'm6', type: 'single',
+  q: 'L0p 收缩/恢复（lane downshift/upshift）的切换边界是？',
+  options: [
+    '任意字节边界',
+    'FLIT 边界',
+    'TLP 边界',
+    '必须先进入 Recovery 才能切换'
+  ],
+  answer: 1,
+  explain: 'L0p 在 L0 内以 FLIT 边界为切换点，数据流不断；FLIT 的 lane striping 在切换点更新。这正是 FLIT 固定长度带来的另一个好处。'
+},
+{
+  id: 'qd-m7-01', module: 'm7', type: 'single',
+  q: '共享流控池（总量 64 credit）中，为防止某类事务饿死，正确的设计是？',
+  options: [
+    '三类事务完全均分池容量',
+    '为 Non-Posted/Completion 等设置保底配额，同时允许池化共享',
+    '谁先到谁占用，不做限制',
+    '只允许 P 类使用共享池'
+  ],
+  answer: 1,
+  explain: '池化的意义是提高利用率，但必须保留防死锁/防饿死的保底约束（如 NP、Cpl 的最小保留配额）。完全无限制的挤占会导致 Completion 无法归还进而死锁。'
+},
+{
+  id: 'qd-m8-01', module: 'm8', type: 'single',
+  q: 'Gen3-5 均衡中，TX preset 的编码范围是？',
+  options: ['0~3', '0~7', '0~9', '0~15'],
+  answer: 2,
+  explain: 'Preset 0~9（4 bit 编码），训练时先用 preset 粗调、再用显式系数（C-1/C0/C+1 各 6 bit）细调。Gen6 的 PAM4 preset 是独立定义的集合。'
+},
+{
+  id: 'qd-m8-02', module: 'm8', type: 'multi',
+  q: '均衡请求-确认流程中，验证必须覆盖的异常路径包括？',
+  options: ['对端发出越界的非法系数请求', '请求发出后对端超时不响应', 'Phase 中途对端反悔（回退请求）', 'Retimer 转发破坏 EQ 握手时序'],
+  answer: [0, 1, 2, 3],
+  explain: '全选。均衡的异常路径是链路训练 bug 密集区：每条异常都应有明确回退行为（拒绝/保持旧值/超时重试/降速），并纳入覆盖率。'
+},
+{
+  id: 'qd-m8-03', module: 'm8', type: 'judge',
+  q: 'Loopback 状态验证中，"异常退出"（掉电、复位、对端消失）场景比正常进入/退出更重要。',
+  options: ['正确', '错误'],
+  answer: 0,
+  explain: '正常路径几乎不会出错；异常退出若处理不当会留下悬挂状态，导致后续训练失败——这类问题在硅后极难定位，RTL 阶段必须覆盖。'
+},
+
+/* M9 深度（2题） */
+{
+  id: 'qd-m9-01', module: 'm9', type: 'multi',
+  q: '关于 TLP 前缀（TLP Prefix），正确的有？',
+  options: [
+    'End-End Prefix 端到端有效，中间代理不得修改或删除',
+    'PASID 前缀配合 IOMMU 实现多进程 DMA 隔离',
+    '前缀位于 TLP Header 之后、Payload 之前',
+    'FLIT 模式下前缀随 TLP 一起装配进 FLIT 净荷'
+  ],
+  answer: [0, 1, 3],
+  explain: 'C 错误：前缀在 TLP Header **之前**（所以叫前缀）。前缀分 End-End 和 Local 两类，数量有上限，是 Gen4+ SVA/PASID 等扩展的基础机制。'
+},
+{
+  id: 'qd-m9-02', module: 'm9', type: 'single',
+  q: 'UIO 与传统 Relaxed Ordering（RO）的本质区别是？',
+  options: [
+    'UIO 只用于 Memory 写，RO 只用于读',
+    'RO 只在同路径放松个别写-写限制；UIO 是跨路径、成体系、需能力协商的乱序框架',
+    'UIO 由硬件自动启用，RO 需要软件设置',
+    '没有本质区别，只是换了名字'
+  ],
+  answer: 1,
+  explain: 'RO 是 Gen1 时代的小幅放松（同路径、特定写-写对）；UIO 面向多路径 fabric，允许显式标记的 IO 流跨路径乱序，引入流标记与能力协商，是 6.1 的体系性增强。'
+},
+
+/* M10 深度（4题） */
+{
+  id: 'qd-m10-01', module: 'm10', type: 'single',
+  q: '为什么 TLP↔FLIT 参考模型需要"双比对点"（FLIT 边界 + TLP 边界）？',
+  options: [
+    '节省仿真时间',
+    '只比 TLP 流会漏掉"打包非法但 TLP 恰可还原"的 bug；只比 FLIT 流会在合法重传/纠错时误报',
+    '规范要求必须有两个比对点',
+    '为了支持多 VC 并发'
+  ],
+  answer: 1,
+  explain: '双比对点 = 高灵敏度 + 低误报：FLIT 级抓打包/CRC 布局错误，TLP 级抓数据完整性错误，且知道注错信息后能容忍合法的纠错与重传。'
+},
+{
+  id: 'qd-m10-02', module: 'm10', type: 'multi',
+  q: '哪些验证对象适合用形式验证（formal）解决？',
+  options: [
+    'RS 译码器的全部错误模式枚举（1~8 错位置组合）',
+    'FLIT 装配器在任意输入下不违反装配规则',
+    '流控不变式 consumed ≤ granted 对任意归还时序成立',
+    '大规模系统级性能测试'
+  ],
+  answer: [0, 1, 2],
+  explain: 'D 属于性能/长稳验证，是 emulation 的领域。formal 擅长"有限状态空间的穷尽证明"：纯函数单元、协议合规性质、不变式。'
+},
+{
+  id: 'qd-m10-03', module: 'm10', type: 'judge',
+  q: 'Gen6 项目常见 bug 集中在正常通路的带宽与时延上，错误处理路径反而很少出问题。',
+  options: ['正确', '错误'],
+  answer: 1,
+  explain: '恰好相反：常见 bug 模式（打包边界、CRC 覆盖域、FEC 误纠、L0p 竞态、credit 归还丢失等）全部在边界与异常路径，正常通路往往全部绿灯。'
+},
+{
+  id: 'qd-m10-04', module: 'm10', type: 'single',
+  q: '性能验证中"1024 个 outstanding 读请求并发"这个用例主要检验什么？',
+  options: [
+    'FEC 纠错能力',
+    'Tag 资源用尽场景的行为与恢复（10-bit tag 支持与回退）',
+    'L0p 收缩速度',
+    'ECRC 生成正确性'
+  ],
+  answer: 1,
+  explain: 'Tag 默认 8 bit（256 个），Gen4+ 可扩展到 10 bit（1024 个）。outstanding 上限用例验证 tag 管理、流控配合与耗尽后的反压行为。'
+},
 ];
 
 if (typeof window !== 'undefined') {
