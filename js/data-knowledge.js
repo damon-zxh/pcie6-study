@@ -5,18 +5,34 @@
  * body 支持极简格式：**粗体**、`代码`、- 列表项、空行分段
  * ============================================================ */
 
+const GROUPS = [
+  { id: 'pcie', name: 'PCIe 6.0', icon: '⚡' },
+  { id: 'rdma', name: 'RDMA / RoCEv2', icon: '🌐' },
+];
+
 const MODULES = [
-  { id: 'm1',  name: 'M1 PCIe 基础回顾',        desc: '分层模型 / TLP / 流控 / LTSSM / 枚举 / 排序' },
-  { id: 'm2',  name: 'M2 PCIe 6.0 总览',         desc: '演进路线与四大技术支柱' },
-  { id: 'm3',  name: 'M3 FLIT 机制',             desc: 'FLIT 结构 / 类型 / TLP 打包' },
-  { id: 'm4',  name: 'M4 PAM4 信令',             desc: '四电平调制 / 格雷码 / 预编码' },
-  { id: 'm5',  name: 'M5 FEC 与错误处理',        desc: 'RS 纠错码 / 双 CRC / First Retry' },
-  { id: 'm6',  name: 'M6 电源管理',              desc: 'L0p / ASPM 回顾' },
-  { id: 'm7',  name: 'M7 流控变化',              desc: 'FLIT 粒度流控 / 共享缓冲池' },
-  { id: 'm8',  name: 'M8 均衡与链路训练',        desc: '均衡回顾 / PAM4 均衡 / 环回测试' },
-  { id: 'm9',  name: 'M9 UIO 与 6.1 新特性',     desc: 'Unordered I/O / CXL 关联' },
-  { id: 'm10', name: 'M10 验证重难点专题',       desc: '错误注入 / 覆盖率 / 断言 / 互操作 / 环境' },
-  { id: 'm11', name: 'M11 参考资料',             desc: '规范 / 白皮书 / 文章 / 书籍' },
+  { id: 'm1',  group: 'pcie', name: 'M1 PCIe 基础回顾',        desc: '分层模型 / TLP / 流控 / LTSSM / 枚举 / 排序' },
+  { id: 'm2',  group: 'pcie', name: 'M2 PCIe 6.0 总览',         desc: '演进路线与四大技术支柱' },
+  { id: 'm3',  group: 'pcie', name: 'M3 FLIT 机制',             desc: 'FLIT 结构 / 类型 / TLP 打包' },
+  { id: 'm4',  group: 'pcie', name: 'M4 PAM4 信令',             desc: '四电平调制 / 格雷码 / 预编码' },
+  { id: 'm5',  group: 'pcie', name: 'M5 FEC 与错误处理',        desc: 'RS 纠错码 / 双 CRC / First Retry' },
+  { id: 'm6',  group: 'pcie', name: 'M6 电源管理',              desc: 'L0p / ASPM 回顾' },
+  { id: 'm7',  group: 'pcie', name: 'M7 流控变化',              desc: 'FLIT 粒度流控 / 共享缓冲池' },
+  { id: 'm8',  group: 'pcie', name: 'M8 均衡与链路训练',        desc: '均衡回顾 / PAM4 均衡 / 环回测试' },
+  { id: 'm9',  group: 'pcie', name: 'M9 UIO 与 6.1 新特性',     desc: 'Unordered I/O / CXL 关联' },
+  { id: 'm10', group: 'pcie', name: 'M10 验证重难点专题',       desc: '错误注入 / 覆盖率 / 断言 / 互操作 / 环境' },
+  { id: 'm11', group: 'pcie', name: 'M11 参考资料',             desc: '规范 / 白皮书 / 文章 / 书籍' },
+  { id: 'm12', group: 'pcie', name: 'M12 VIP 与验证实战',       desc: 'VIP 生态 / bring-up / 注错矩阵 / 集成经验' },
+  { id: 'm13', group: 'pcie', name: 'M13 样片定位案例',         desc: 'debug 方法论 / 8 个典型失败模式案例' },
+  { id: 'r1',  group: 'rdma', name: 'R1 RDMA 体系结构',         desc: 'IB/RoCE/iWARP / verbs 对象 / MR / Doorbell / CQ' },
+  { id: 'r2',  group: 'rdma', name: 'R2 QP 状态机与传输类型',   desc: 'RC/UC/UD/XRC / 状态迁移 / RTR-RTS 属性 / 操作全集' },
+  { id: 'r3',  group: 'rdma', name: 'R3 RoCEv2 报文格式',       desc: '封装 / BTH/DETH/扩展头 / Opcode / GRH / ICRC' },
+  { id: 'r4',  group: 'rdma', name: 'R4 可靠传输与错误处理',    desc: 'PSN/ACK / Go-Back-N / RNR / 完成状态码' },
+  { id: 'r5',  group: 'rdma', name: 'R5 无损网络与拥塞控制',    desc: 'PFC / 死锁与 headroom / ECN/CNP / DCQCN / ETS' },
+  { id: 'r6',  group: 'rdma', name: 'R6 应用场景',              desc: 'AI 训练 / NVMe-oF / MPI / 云虚拟化 / IB 拓扑' },
+  { id: 'r7',  group: 'rdma', name: 'R7 RDMA 验证专题',         desc: '环境架构 / 流量模型 / 注错矩阵 / 覆盖 / 性能 / 合规' },
+  { id: 'r8',  group: 'rdma', name: 'R8 VIP 与实战',            desc: 'VIP 生态 / SoftRoCE 参考模型 / PCIe 协同 / 常见坑' },
+  { id: 'r9',  group: 'rdma', name: 'R9 资料与工具',            desc: 'IBTA 规范 / rdma-core / perftest / SPDK' },
 ];
 
 const KNOWLEDGE = [
@@ -1066,6 +1082,934 @@ const KNOWLEDGE = [
     '提醒：本系统的卡片是"导航图"，规范原文才是"法律条文"——两者对照阅读，发现出入以规范为准。'
   ].join('\n'),
   verify: '读规范时给每节标注"已验证/未验证"——未验证章节就是下一个用例清单。'
+},
+
+/* ================= M12/M13：VIP 实战与样片定位 ================= */
+
+{
+  id: 'k-m12-01', module: 'm12', title: '主流 PCIe VIP 生态对比',
+  tags: ['VIP', '生态', 'Synopsys', 'Cadence'],
+  body: [
+    '商用 PCIe VIP 按能力维度对比（具体型号/版本能力以厂商最新文档为准）：',
+    '- **Synopsys DesignWare VIP（VC/VM）**：协议覆盖最全（Gen1~Gen6/ CXL），提供 Active/Passive 组件、错误注入框架、软件测试套件（VTSA?），与 VCS/Verdi 生态无缝；新特性（L0p/UIO）跟进最快。',
+    '- **Cadence VIP（Denali）**：与 Xcelium/Maxim? 生态集成好，协议检查严格，提供 C 模型接口与纯软件仿真模式。',
+    '- **Avery 等其他厂商**：性价比路线，部分厂商在特定接口（如 AER/PLDA 语义）有特色。',
+    '- **开源/自制 BFM**：适合前期 bring-up 与小团队；协议覆盖和注错能力远不及商用 VIP——6.0 项目强烈建议商用 VIP（错误处理矩阵无法手写穷举）。',
+    '',
+    '**选型关注维度**：协议版本支持（6.0/6.1 全特性？）、注错 API 粒度（符号级/TLP 级/时序级）、passive monitor 独立性（能否挂现有设计）、软件模型（后门配置/BIOS 仿真）、性能建模（带宽/延迟统计）、与自家验证环境的可移植性。'
+  ].join('\n'),
+  verify: 'VIP 能力调研做成 checklist 进验证计划：每个验证主题对应 VIP 的哪个组件/API，缺口的自行开发补齐。'
+},
+{
+  id: 'k-m12-02', module: 'm12', title: 'VIP bring-up Checklist',
+  tags: ['VIP', 'bring-up', '清单'],
+  body: [
+    '新项目接入 VIP 的标准步骤（按序，每步可回归）：',
+    '- **环境骨架**：VIP 组件例化（active device/host）+ 时钟复位 + 接口对齐（PCLK/PIPE/PHY 接口形态选对）。',
+    '- **参数对齐**：GT/s 目标、链路宽度、MaxPayload/MaxReadRequest、VC 数、ASPM 能力——与 DUT 配置空间能力**双向一致**（不一致是最常见的 bring-up 假失败）。',
+    '- **训练通路**：先跑最低速率训练通过（2.5 GT/s），再逐级打开速率/均衡；VIP 的 EQ 协作模式（自动/手动 preset）先自动化后调试。',
+    '- **基础事务**：MemRd/Wr、ConfigRd/Wr 走通 → scoreboard 数据一致。',
+    '- **错误路径解锁**：确认 VIP 的注错接口默认关闭、检查器（checker）等级从宽松到严格逐级收紧。',
+    '- **回归化**：参数化序列 + makefile/regression 接入；每次 VIP 版本升级做差异回归。'
+  ].join('\n'),
+  verify: 'bring-up 每步的通过判据写成文档，避免"看起来通了"——训练通过 ≠ 事务正确。'
+},
+{
+  id: 'k-m12-03', module: 'm12', title: '注错能力实战：错误矩阵构建',
+  tags: ['VIP', '注错', '错误矩阵'],
+  body: [
+    '商用 VIP 的注错 API 通常覆盖以下维度（按层）：',
+    '- **PHY/符号级**：symbol 位翻转、burst 错、乱序、SKP 插入异常、EIOS 丢失。',
+    '- **链路帧级**：LCRC/CRC 破坏、序列号跳变、DLLP/FLIT 丢弃/重复/延迟、Replay 破坏、credit 破坏（超发/少还）。',
+    '- **事务级**：ECRC 破坏、poison 置位、排序违规（RO/IDO 越界）、Completion 异常（超时/错误状态/部分返回）。',
+    '- **时序级**：Ack 延迟超限、UpdateFC 超时、FC 归还拖延、Recovery 请求插入时机。',
+    '',
+    '**错误矩阵构建方法**：行=错误类型（穷举 API 能力），列=注入时机（L0/L0p/训练中/切换中）与注入参数（数量/位置/重复次数）——每格一个用例；用例体 = VIP 注错 API + 期望行为检查（纠错/重传/升级）+ 数据一致性断言。**把 VIP 文档的注错清单当生成矩阵的输入**，不要凭想象写。'
+  ].join('\n'),
+  verify: '矩阵自动化：参数化 sequence + config_db 驱动注入类型，一条 base test 扫全矩阵。'
+},
+{
+  id: 'k-m12-04', module: 'm12', title: 'VIP+UVM 集成经验',
+  tags: ['VIP', 'UVM', '集成'],
+  body: [
+    '- **配置传递**：VIP 配置对象经 config_db 下发，集中在 env 层配置文件/测试参数统一管理，禁止散落在 sequence 里改。',
+    '- **回调/钩子**：错误注入走 VIP 的 callback/API 而非改源码——升级不崩；把注错点抽象成自己的 error_agent，正交于激励。',
+    '- **连接**：VIP analysis port → 自家 scoreboard/coverage；TLP 级与 flit 级双订阅点都要接。',
+    '- **寄存器模型**：VIP 的 reg model（若有）与 DUT reg model 的 adapter 对齐；配置空间读写经 VIP 后门加速 bring-up。',
+    '- **序列分层**：VIP 自带 sequence 库（合规/边界）当素材，业务序列继承或封装；混合负载场景用 virtual sequence 调度两类 agent。',
+    '- **版本管理**：VIP 版本与 DUT 特性清单绑定（如"L0p 支持从 vX.Y 起"），升级走独立分支回归。'
+  ].join('\n'),
+  verify: '集成完成标志：全部 checker 开到最严 + 全部注错 API 可用 + 覆盖率直通无死角。'
+},
+{
+  id: 'k-m12-05', module: 'm12', title: 'VIP 使用常见坑 Top 8',
+  tags: ['VIP', '坑', '经验'],
+  body: [
+    '1. **参数不一致假失败**：DUT 与 VIP 的能力配置差一位（MPS/宽度），训练反复失败——先对配置再查协议。',
+    '2. **超时太短**：仿真里重训练/重均衡时间被低估，VIP 超时报错——用规范下限再放余量。',
+    '3. **复位后残留**：VIP 未做干净复位（状态机/credit 记账残留），第二遍训练行为诡异——每个用例独立复位并校验 VIP 内部状态清零。',
+    '4. **EQ 协作模式用错**：自动 EQ 与 DUT 的手动调试互相干扰；调试期切手动 preset。',
+    '5. **乱序期望写死**：VIP 乱序交付时 scoreboard 按序比对误报——按排序规则归序再比（见 M10 参考模型卡）。',
+    '6. **低功耗响应缺失**：DUT 发 L1 请求 VIP 不应答挂死——VIP 的 PM 响应模式要显式使能。',
+    '7. **注错忘了关**：注错用例跑完未清理，后续用例全挂——注入范围限定在单 sequence 生命周期内。',
+    '8. **checker 等级一刀切**：bring-up 期全严导致噪声淹没问题；分阶段收紧。'
+  ].join('\n'),
+  verify: '坑清单当回归诊断手册：失败先查这 8 条再深挖。'
+},
+{
+  id: 'k-m12-06', module: 'm12', title: 'VIP 性能与压力测试用法',
+  tags: ['VIP', '性能', '压力'],
+  body: [
+    '- **带宽**：VIP 连续大 payload 单向流 + 统计接口读有效带宽；关注 DUT 的 credit 归还节奏对吞吐的影响（对照 M7）。',
+    '- **时延**：时间戳打在 TLP 级（读写分开统计）；Cpl 延迟分 RC 读/Peer 读；重传/纠错事件单独标记延迟分布。',
+    '- **反压建模**：VIP 侧可控的 credit 收缩/归还延迟 → 构造 DUT 内部 buffer 高水位场景。',
+    '- **压力组合**：多 VC 混合负载 + 注错低概率穿插 + 功耗状态切换（L0p/L1）——长稳跑 emul 或 VIP 加速模式。',
+    '- **统计交付**：吞吐/延迟/重传率三组直方图作为回归基线入库，性能回归对比趋势而非单点。'
+  ].join('\n'),
+  verify: '性能指标进 CI 门禁：超标即 fail，防止性能静默劣化。'
+},
+
+{
+  id: 'k-m13-01', module: 'm13', title: '硅后 debug 方法论与工具链',
+  tags: ['样片', 'debug', '方法论'],
+  body: [
+    '（本模块案例为综合业界常见失败模式整理的教学案例，用于建立 debug 思维，非特指某公司项目。）',
+    '',
+    '**症状四大类与第一响应**：',
+    '- **训练类**（链路起不来/降级）→ 抓训练波形（分析仪/内置 trace）+ 看 LTSSM 停驻状态 + 电气参数（眼图/幅度）。',
+    '- **数据类**（CRC 错/重传/静默丢数据）→ 链路层计数器（纠错/重传/margin）+ 错误是否随温度/负载/速率变化。',
+    '- **配置类**（枚举丢设备/寄存器异常/中断异常）→ 配置空间 dump 对比 + 枚举过程 trace + FLR/热插拔时序。',
+    '- **功耗类**（L1.2 挂死/唤醒失败/功耗异常）→ CLKREQ/PM 信号波形 + 状态机停留 + 平台协同配置。',
+    '',
+    '**工具链**：协议分析仪（训练/事务级）、BERT/margin 扫描（电气余量）、JTAG/片上 trace（内部状态）、温度箱（应力相关）、软件寄存器 dump（配置态）。**先分类再动手**——四类问题的工具链和假设树完全不同。'
+  ].join('\n'),
+  verify: 'debug 报告模板：症状/分类/假设树/证据/根因/修复/回归项——每个案例都填全。'
+},
+{
+  id: 'k-m13-02', module: 'm13', title: '案例 1：训练卡死在 Polling',
+  tags: ['样片', '案例', '训练'],
+  body: [
+    '**现象**：上电后链路起不来，LTSSM 停在 Polling.Active，重试若干次后降级或超时。',
+    '**定位路径**：① 分析仪抓两侧 TS 交换 → 发现一端 TS1 收不到或符号错率极高；② 查电气：TX 幅度/去加重、极性反转配置、AC 耦合；③ 查配置：lane 反转/极性配置位与板级走线一致性。',
+    '**根因（典型模式）**：lane 极性反转配置与 PCB 走线不符（高速走线为省过孔常交叉）；或 TX 输出摆幅配置错误导致眼图全闭。',
+    '**修复**：配置位纠正/幅参数修正；板级问题改板前用可编程极性兜底。',
+    '**验证启示**：极性/反转变量在 RTL 验证阶段就要全覆盖（仿真里配错只是"通不过训练"，硅后就是训不出来）；训练失败自动降级路径要可观测。'
+  ].join('\n'),
+  verify: '把 lane 极性反转、通道交换（x4 反接）做成验证的强制覆盖项。'
+},
+{
+  id: 'k-m13-03', module: 'm13', title: '案例 2：EQ 后偶发 CRC 错',
+  tags: ['样片', '案例', '均衡'],
+  body: [
+    '**现象**：训练/均衡通过，高负载下偶发 LCRC 错（每 1e9 符号几个），重传正常但吞吐下降 5%。',
+    '**定位路径**：① margin 扫描（眼高/眼宽余量）→ 发现均衡后眼图余量偏小；② 分析仪回放 EQ 过程 → 确认选中的 preset 非最优；③ 温度/电压拉偏复现 → 余量随条件恶化。',
+    '**根因（典型模式）**：均衡收敛到了局部次优点（EQ 演算法在多极值环境中收敛过早），叠加工艺角偏慢，余量不足。',
+    '**修复**：EQ 重试策略调参（允许更多 preset 尝试）、引入 margin 反馈的 preset 微调、必要时手动指定 preset。',
+    '**验证启示**：RTL 验证要覆盖"EQ 结果次优"场景（模拟非理想信道 + 强制次优 preset），确认降级余量下的行为（性能下降而非失效）；margin 扫描接口设计阶段就要留。'
+  ].join('\n'),
+  verify: '信道模拟 + 非理想均衡结果注入，验证系统在"差但合法"链路上的鲁棒性。'
+},
+{
+  id: 'k-m13-04', module: 'm13', title: '案例 3：高温下掉链路',
+  tags: ['样片', '案例', '温度'],
+  body: [
+    '**现象**：常温全绿，温箱 85°C+ 高负载运行数小时后偶发掉链（进 Recovery 后训练失败或数据错）。',
+    '**定位路径**：① 温度相关性确认（降温复现消失）；② 掉链瞬间抓波形 → 判断是电气失锁（symbol 错暴涨）还是状态机问题；③ 分离器件/信道/封装因素（换板/换芯片对比）。',
+    '**根因（典型模式）**：高温下 TX 输出摆幅/Jitter 恶化 + DFE 自适应跟踪不及时；或封装/信道插损随温度漂移超出训练余量。',
+    '**修复**：温度补偿参数、自适应重新均衡触发条件（错误率阈值触发重 EQ）、散热优化。',
+    '**验证启示**：RTL 阶段做"参数漂移注入"（均衡参数随仿真时间缓慢劣化），验证自适应重训练的触发与收敛；温箱回归是 silicon 必做项。'
+  ].join('\n'),
+  verify: '重 EQ 触发阈值（错误率/持续时间）的覆盖与迟滞（防反复震荡）验证。'
+},
+{
+  id: 'k-m13-05', module: 'm13', title: '案例 4：Replay 风暴导致带宽骤降',
+  tags: ['样片', '案例', '重传'],
+  body: [
+    '**现象**：特定负载下带宽从标称值掉 30%+，链路层重传计数高企（replay 风暴），但无硬错误。',
+    '**定位路径**：① 分析仪统计重传触发原因（Nak vs 超时）→ 超时为主；② 看 ACK 返回时序 → ACK 被 DUT 内部某级延迟阻塞；③ 结合 DUT 内部 trace 定位阻塞点（credit 检查/仲裁）。',
+    '**根因（典型模式）**：Replay Timer 超时参数与实际 ACK 路径延迟不匹配（配置成规范下限但 ACK 合并策略延迟偏大），超时触发全量重传 → 带宽塌陷。',
+    '**修复**：Timer 参数按链路实际延迟校准；ACK 处理路径优化；必要时自适应 timer。',
+    '**验证启示**：参数类 bug（timer/阈值）在 RTL 验证要用**规范边界值双向扫**（min/max）；性能回归必须包含重传敏感负载。'
+  ].join('\n'),
+  verify: 'ACK 延迟参数扫描用例族：确认各延迟下不误触超时。'
+},
+{
+  id: 'k-m13-06', module: 'm13', title: '案例 5：L1.2 唤醒挂死',
+  tags: ['样片', '案例', '低功耗'],
+  body: [
+    '**现象**：进入 L1.2 后偶发无法唤醒，链路死在电气空闲，需要复位恢复；概率低、难复现。',
+    '**定位路径**：① 抓 CLKREQ#/PERST# 等 PM 信号时序 → 对照规范时序参数；② 平台侧（BIOS/RC 配置）与 EP 配置对比 → 发现双方 L1.2 子状态使能/时序参数不一致；③ 复现最小化：特定进入/退出序列 + 特定时序窗口。',
+    '**根因（典型模式）**：CLKREQ 唤醒握手时序在临界窗口（一方提前/滞后于规范窗口），或平台与 EP 的 L1.2 子状态协商不一致导致唤醒流程分歧。',
+    '**修复**：时序参数对齐 + 唤醒超时兜底路径 + 协商一致性检查。',
+    '**验证启示**：低功耗验证必须做**平台协同**（RC+EP 联合）与**时序边界扫描**（在规范窗口边界注入扰动）；挂死类 bug 的兜底路径（超时复位）要有断言覆盖。'
+  ].join('\n'),
+  verify: 'L1.2 唤醒时序扰动扫描（±20% 窗口）+ 兜底路径断言。'
+},
+{
+  id: 'k-m13-07', module: 'm13', title: '案例 6：枚举阶段丢失设备',
+  tags: ['样片', '案例', '枚举'],
+  body: [
+    '**现象**：拓扑里有设备偶尔枚举不到（热插拔或重启后概率出现）， BIOS/OS 层面表现为设备消失。',
+    '**定位路径**：① 复现时抓配置事务 trace → CfgRd 无响应（Master Abort）或返回异常；② 查设备侧：收到 CfgRd 时的状态（FLR 进行中？未就绪？）；③ 查桥的窗口配置（总线号/地址窗口）。',
+    '**根因（典型模式）**：FLR（Function Level Reset）期间设备不响应配置访问，而软件枚举与 FLR 完成时序竞争；或热插拔后桥窗口未及时更新。',
+    '**修复**：枚举前等待 FLR 完成（软件时序）；设备侧 FLR 期间按规范要求响应（规范允许在 FLR 100ms 内完成）；桥窗口更新时序修正。',
+    '**验证启示**：FLR 与配置访问的竞争用例（枚举/FLR/热插拔交织）是必测项；Master Abort 与设备无响应的区分要可观测。'
+  ].join('\n'),
+  verify: 'FLR×枚举×热插拔交织场景进回归；FLR 100ms 时序断言。'
+},
+{
+  id: 'k-m13-08', module: 'm13', title: '案例 7：高负载下 Completion 超时',
+  tags: ['样片', '案例', 'Completion'],
+  body: [
+    '**现象**：大压力测试中读请求偶发 AER Completion Timeout 报错，重试后成功；请求量越大概率越高。',
+    '**定位路径**：① 先区分"真丢"还是"慢"：分析仪看 CplD 是否最终返回 → 返回了但晚于超时；② 慢的原因：DUT 内部某类 buffer 占满导致 Cpl 排队（对照共享流控池行为）；③ 真丢的原因：Cpl 在内部被错误丢弃（对账）。',
+    '**根因（典型模式）**：NP 类 credit 设置过大导致 DUT 接收 Cpl 时内部缓冲不足排队；或 Cpl 与内部 DMA 通道仲裁饥饿。',
+    '**修复**：credit/buffer 配比优化；仲裁加权；软件超时时间按 P99 校准。',
+    '**验证启示**：Completion 超时的验证核心是"定量"——构造可控的 Cpl 延迟分布，验证超时阈值在 P99 之外（含重传/纠错引入的尾部）。'
+  ].join('\n'),
+  verify: 'Cpl 延迟分布生成器 + 超时阈值边界扫描。'
+},
+{
+  id: 'k-m13-09', module: 'm13', title: '案例 8：MSI-X 中断偶发丢失',
+  tags: ['样片', '案例', '中断'],
+  body: [
+    '**现象**：高中断速率下软件偶发"事件发生了但没收到中断"，轮询能兜住，概率极低。',
+    '**定位路径**：① 确认事件确实发生（硬件状态位置位）且软件已使能该向量；② 抓 MSI-X TLP（内存写）是否发出 → 发了但地址/数据错？没发？③ 关联硬件事件与 MSI-X TLP 的时序 → 找到窗口。',
+    '**根因（典型模式）**：向量掩码更新与 pending 位设置的竞态（软件改 Mask 位时硬件恰在置 pending）；或 MSI-X TLP 与其他 posted 写乱序到 RC（排序规则边界）；或中断聚合策略丢事件。',
+    '**修复**：掩码-pending 竞态的硬件互锁；关键中断绕过聚合；必要时 de-assert/re-assert INTx 语义兜底。',
+    '**验证启示**：中断验证要覆盖**硬件事件×软件配置变化×链路状态**三维交织；MSI-X TLP 的地址/数据/排序逐一断言（很多团队只查"有没有中断"）。'
+  ].join('\n'),
+  verify: 'MSI-X TLP 内容与排序断言 + 掩码竞态定向用例。'
+},
+
+/* ================= RDMA：R1-R9 ================= */
+
+/* ---------------- R1 体系结构与对象模型 ---------------- */
+{
+  id: 'k-r1-01', module: 'r1', title: 'RDMA 三种实现对比：IB / RoCEv2 / iWARP',
+  tags: ['RDMA', 'IB', 'RoCEv2', 'iWARP'],
+  body: [
+    '| 维度 | InfiniBand（IB） | RoCEv2 | iWARP |',
+    '| 网络层 | 自有 IB 链路/LRH+GRH 路由 | 以太网 + IPv4/v6 | 以太网 + IPv4/v6 + TCP |',
+    '| 传输层 | IB 传输（BTH/PSN） | 同 IB 传输（BTH/PSN） | DDP/RDMAP（TCP 上） |',
+    '| 无损依赖 | 天然无损（credit 流控） | 依赖 PFC/ECN 配置 | TCP 自带可靠性，无需无损网 |',
+    '| 管理 | SM 子网管理器（LID/路由） | 标准以太网/IP 管理 | 同 RoCE |',
+    '| 生态/部署 | HPC 顶流（专用交换机） | 数据中心主流（AI/存储） | 存量部署，新增少 |',
+    '',
+    '- 三者的** verbs API 相同**——应用层一致，底层网络可替换（这是 verbs 抽象的价值）。',
+    '- RoCEv2 的关键设计：把 IB 传输层（可靠、无序化处理、PSN）原封不动搬到 UDP/IP 上（目的端口 4791），复用以太网生态；代价是**需要无损网络**（丢包会触发重传风暴）。',
+    '- 验证视角：RoCEv2 = IB 传输语义 + 以太网/IP 环境，验证重心在两者交界（封装/ICRC/拥塞联动）。'
+  ].join('\n'),
+  verify: '对比表当架构评审 checklist：每个部署决策（IB vs RoCE）对应不同验证重点。'
+},
+{
+  id: 'k-r1-02', module: 'r1', title: 'verbs 对象层级与生命周期',
+  tags: ['verbs', '对象模型', 'PD'],
+  body: [
+    'verbs（RDMA 编程接口）的对象树：',
+    '- **设备上下文**（ibv_open_device，对应一个 NIC）→ **PD（Protection Domain，保护域）**：隔离边界，其下的对象互相关联。',
+    '- PD 下挂：**MR**（内存区域）、**CQ**（完成队列）、**QP**（队列对）、**SRQ**（共享接收队列）、**AH**（地址句柄，UD 用）。',
+    '- 关联规则：QP 的 WQE 引用 MR（lkey），完成写入 CQ；同一 PD 的对象才能互操作；**跨 PD 访问必须经 rkey 校验**。',
+    '',
+    '- **控制面（slow path）**：create/modify/destroy 走内核（ibv_modify_qp 等），慢、可睡眠。',
+    '- **数据面（fast path）**：post_send/post_recv/poll_cq 全用户态（kernel bypass），直接写 doorbell/MMIO——RDMA 低时延的本质。',
+    '- **销毁顺序**：先销毁使用方（QP）再销毁被引用方（CQ/MR/PD），销毁 MR 时必须保证无在途访问（经典 bug 源）。',
+    '',
+    '验证视角：对象生命周期 = RDMA 版的"配置空间验证"——创建/修改/销毁×并发×在途访问的竞争是重点。'
+  ].join('\n'),
+  verify: 'MR 销毁时在途访问、QP 转换态时 modify 竞争——生命周期竞争用例族。'
+},
+{
+  id: 'k-r1-03', module: 'r1', title: '内存注册与 MR：lkey/rkey 与访问检查',
+  tags: ['MR', 'rkey', '内存', 'ODP'],
+  body: [
+    '**注册流程**：用户提交虚拟地址+长度 → 驱动 pin 住物理页（page lock，防换出）→ 生成 IOVA（设备可见地址）→ 硬件 MR 表记录 → 返回句柄。',
+    '- **lkey**：本地访问凭据（WQE 里引用"用哪块内存"）。',
+    '- **rkey**：远程访问凭据（告诉对端：可对我这块内存做 WRITE/READ/Atomic）。',
+    '- **权限位**：LOCAL_WRITE / REMOTE_WRITE / REMOTE_READ / REMOTE_ATOMIC / MW_BIND——最小权限原则：没有 REMOTE_READ 就不能被对端读。',
+    '',
+    '**远端访问检查链**（对端发 RDMA WRITE 时 DUT 内部做的事）：VA + rkey → MR 查找（key 是否有效/匹配）→ 权限检查（REMOTE_WRITE 置位？）→ 边界检查（VA+len 不越 MR 界）→ 执行。任一步失败 → 回 NAK（含远程访问错误语义）→ 对端 CQE 报 REMOTE_ACCESS_ERR。',
+    '- **MW（Memory Window）**：二段绑定——先注册大 MR，再从 MR 上开小窗口给对端（细粒度授权，窗口可单独失效）。',
+    '- **ODP（On-Demand Paging）**：免 pin，访问未驻留页触发 page fault 流程（需硬件+IOMMU 支持，GPU 场景重要）。',
+    ''
+  ].join('\n'),
+  verify: '注入矩阵：rkey 失效/过期、权限位缺失、VA 越界（首字节/末字节/整段）、MW 绑定竞争——每项验证错误码与 NAK 语义正确。'
+},
+{
+  id: 'k-r1-04', module: 'r1', title: 'Doorbell 与 WQE 提交路径',
+  tags: ['doorbell', 'WQE', '提交'],
+  body: [
+    '**提交流水线**（发送侧）：',
+    '1. 软件把 **WQE**（Work Queue Element：opcode/参数/lkey/SGL 等）写入 SQ 环形缓冲（主机内存）。',
+    '2. 软件写 **doorbell**（8B MMIO：QP 号 + SQ 中新 WQE 的索引）"按铃"通知 NIC。',
+    '3. NIC DMA 读走 WQE → 按 PSN 逐个发包。',
+    '4. 完成后 NIC DMA 写 CQE → 触发 MSI-X 中断（可选）。',
+    '',
+    '**关键顺序约束**：WQE 必须在 doorbell 之前对 NIC 可见——需要写序保证（memory barrier / write-combining 语义）。顺序错了 = NIC 读到旧数据 = 静默数据损坏（极难查）。',
+    '- **批量提交**：多个 WQE 一次 doorbell（索引直接跳到最后一个）——高频小包场景的关键优化。',
+    '- **DBREC**（doorbell record）：接收侧的"门铃记录"映射到主机内存，NIC 异步读取，减少 MMIO 次数。',
+    '- **inline 发送**：小 payload 直接嵌在 WQE 里，省一次 DMA（IBV_SEND_INLINE，受 max_inline_data 限制）。',
+    '',
+    '验证视角：门铃-WQE 的顺序、批量、回卷（ring index wrap）、乱序 ring 是 NIC 验证的头部注入点。'
+  ].join('\n'),
+  verify: '注入：doorbell 先于 WQE 可见、重复 ring、跨 2^24? 回卷、WQE 格式错——每种验证设备端行为（容忍/报错）明确。'
+},
+{
+  id: 'k-r1-05', module: 'r1', title: 'CQ 与完成机制',
+  tags: ['CQ', 'CQE', '完成'],
+  body: [
+    '**CQE 字段**：WR ID（软件上下文回执）、QP 号、opcode、状态（成功/错误码）、byte_len（传输字节数）、时间戳（可选）。一次 READ 完成时 byte_len = 读回字节数。',
+    '- **完成策略**：只有带 IBV_SEND_SIGNALED 的 WR 生成 CQE（未签名的省 CQ 空间但应用拿不到单 WR 完成通知——按批设计）。',
+    '- **通知模式**：polling（轮询 poll_cq，最低延迟，AI/存储常用）vs 事件（req_notify_cq + comp_channel + 中断，CPU 友好）。',
+    '- **arm 语义**：ARM_NEXT（下一个 CQE 通知）/ ARM_SOLICITED（下一个带 Solicited 标记的）/ ARM_ALWAYS——配错会丢通知。',
+    '- **CQ Overrun**：CQE 写满又来新完成 → 严重错误：**相关 QP 转 Error**（规范要求）——poll 不及时会毁掉整个连接，这是"轮询延迟"验证的重点。',
+    '- **中断合并**（interrupt coalescing）：多 CQE 聚合一次中断——降 CPU 但加延迟，可配置，验证边界。'
+  ].join('\n'),
+  verify: 'CQ 满注入（不 poll 灌满）→ 验证 QP Error 行为与软件恢复；arm 语义各模式丢通知边界。'
+},
+
+/* ---------------- R2 QP 状态机与传输类型 ---------------- */
+{
+  id: 'k-r2-01', module: 'r2', title: 'QP 四类型对比：RC / UC / UD / XRC',
+  tags: ['QP', 'RC', 'UC', 'UD', 'XRC'],
+  body: [
+    '| 类型 | 连接性 | 支持操作 | 可靠性 | 典型场景 |',
+    '| RC（Reliable Connection） | 一对一 | SEND/RDMA WRITE/READ/Atomic 全集 | ACK/重传/保序 | 通用可靠传输（默认选择） |',
+    '| UC（Unreliable Connection） | 一对一 | SEND/WRITE（无 READ/Atomic） | 不保证 | 自定义可靠层场景 |',
+    '| UD（Unreliable Datagram） | 无连接 | 仅 SEND | 不保证（可丢/乱序/重复） | 广播/多播、轻量探活、路由协议 |',
+    '| XRC（eXtended RC） | 跨进程共享 | 同 RC | 同 RC | MPI 多进程共享，省 QP 数量 |',
+    '',
+    '- **UD 上限**：payload ≤ Path MTU（不分段），且 RoCEv2 下无 GRH 但需注意 Q_Key 校验；大量小消息场景 UD 效率高（无连接状态）。',
+    '- **SRD**（AWS 专用 Reliable Datagram）：可靠但允许乱序，云内优化——了解即可。',
+    '- **QP 数量问题**：RC 全互联 = N×(N-1) 个 QP，万节点集群爆炸；XRC/SRQ/多播是缓解手段；NIC 的 QP 上下文缓存容量是扩展性瓶颈（验证重点，见 R7）。'
+  ].join('\n'),
+  verify: '每类型至少一组用例；UD 的乱序/重复/丢包容忍路径单独建 case。'
+},
+{
+  id: 'k-r2-02', module: 'r2', title: 'QP 状态机全迁移',
+  tags: ['QP', '状态机', 'modify_qp'],
+  body: [
+    '主迁移路径：**RESET → INIT → RTR → RTS**（经 ibv_modify_qp 逐级迁移）：',
+    '- **RESET**：刚创建，一切停摆（无 WQE 处理）。',
+    '- **INIT**：配置阶段——可设置 P_Key? /端口/access_flags（允许哪些远端访问类型）；**RQ 可开始 post_recv**（SQ 仍不可发）。',
+    '- **RTR**（Ready To Receive）：填对端信息（dest_qp、rq_psn、path_mtu、max_dest_rd_atomic、min_rnr_timer、ah_attr）→ **接收路径就绪**，可收对端发来的包。',
+    '- **RTS**（Ready To Send）：填发送参数（sq_psn、timeout、retry_cnt、rnr_retry、max_rd_atomic）→ **发送路径就绪**。',
+    '',
+    '**运行期状态**：',
+    '- **SQD（Send Queue Drained）**：排空 SQ 再改参数（限流/调度场景）。',
+    '- **SQE（SQ Error）**：本地 SQ 出错，只影响 SQ，RQ 仍可工作（UC/RC 有此中间态）。',
+    '- **ERROR**：致命错误态——未完成 WQE 全部以错误 CQE 刷新，必须 Reset 重建（参数全清）。',
+    '- **迁移相关**：MIGrate/rearm 状态与 SM 重定向有关（IB 特有），RoCE 少用。',
+    '',
+    '**非法迁移**（如 RTS→INIT）必须被拒绝（EINVAL/EPERM）——验证必查。'
+  ].join('\n'),
+  verify: '合法迁移矩阵全覆盖 + 非法迁移拒绝 + ERROR 后 CQ 刷新顺序（先发后收？按 WQE 顺序）断言。'
+},
+{
+  id: 'k-r2-03', module: 'r2', title: 'RTR/RTS 关键属性表',
+  tags: ['RTR', 'RTS', '属性', 'timeout'],
+  body: [
+    '**RTR（接收侧）属性**：',
+    '- `rq_psn`：期望的接收起始 PSN——**必须与对端 sq_psn 匹配**，错一个字节都全丢（最经典的 bring-up 错误）。',
+    '- `path_mtu`：512/1024/2048/4096——两端可不同？不行，**必须一致**（端到端分段基准）。',
+    '- `max_dest_rd_atomic`：本端能承受的并发 READ/Atomic 数（2 的幂，≤16）。',
+    '- `min_rnr_timer`：本端无 WQE 时让对端等待的最小重试间隔。',
+    '- `ah_attr`：对端地址（RoCE: IP/GID/DSCP/ hops；IB: LID/SL）。',
+    '',
+    '**RTS（发送侧）属性**：',
+    '- `sq_psn`：发送起始 PSN（与对端 rq_psn 匹配）。',
+    '- `timeout`：ACK 超时 = **4.096μs × 2^timeout**（编码 0~31）——0 约 4μs，20 约 72 分钟？粗算 2^20×4.096μs≈4.3s? ——**精确值以 IBTA spec Table 41/时间表为准**；常用 12~18 区间（秒级）。',
+    '- `retry_cnt`：超时/NAK 重试上限（0~7），用尽 → QP Error。',
+    '- `rnr_retry`：RNR 重试上限（**7 = 无限重试**）。',
+    '- `max_rd_atomic`：本端发起的并发 READ/Atomic 上限（受对端 max_dest_rd_atomic 约束，取小）。',
+    '',
+    '**两端不匹配的后果**：PSN 不匹配 → 全部 sequence error；MTU 不匹配 → 分段错乱；rd_atomic 协商错 → 对端拒绝请求。'
+  ].join('\n'),
+  verify: '属性组合扫描：PSN 错配/MTU 不一致/rd_atomic 越限——验证错误报告路径而非静默异常。'
+},
+{
+  id: 'k-r2-04', module: 'r2', title: 'RC 操作全集与 send_flags',
+  tags: ['RC', 'opcode', 'send_flags'],
+  body: [
+    '**RC 支持的消息类型**：',
+    '- **SEND**（对端 RQ 消费，需对端 post_recv 配对）：大消息按 MTU 分段为 First/Middle/Last/Only 包。',
+    '- **RDMA WRITE**：直接写对端内存（带 RETH：远端 VA/RKey/DMALen），不消耗对端 RQ WQE——零拷贝核心。',
+    '- **RDMA READ**：请求（RETH）→ 对端主动读自己内存发回（Response 带数据+AETH）——消耗**发起方**的 max_rd_atomic 额度。',
+    '- **Atomic**：FetchAdd / CompareSwap（64b 原子操作，对端内存执行）——分布式锁/同步原语。',
+    '',
+    '**send_flags**：',
+    '- `IBV_SEND_SIGNALED`：生成 CQE（默认策略由 SQ 语义决定：不签名则不生成）。',
+    '- `IBV_SEND_INLINE`：payload 内嵌 WQE（≤max_inline_data），省 DMA。',
+    '- `IBV_SEND_FENCE`：等待前序 READ/Atomic 完成才执行本条（处理 RAW 依赖）。',
+    '- `IBV_SEND_SOLICITED`：对端可按 Solicited 事件策略延迟通知（大消息最后一个包常用）。',
+    '',
+    '**分段规则**：消息 >MTU → First + n×Middle + Last；Last 包可带 IMM；READ 无分段（响应端按 MTU 分段发送）。'
+  ].join('\n'),
+  verify: 'F/M/L 分段边界（=MTU/±1）、READ 并发上限（max_rd_atomic 边界）、FENCE 语义验证。'
+},
+{
+  id: 'k-r2-05', module: 'r2', title: 'XRC 与 QP 共享机制',
+  tags: ['XRC', '共享', 'MPI'],
+  body: [
+    '**XRC（eXtended Reliable Connection）解决什么**：MPI 多进程（rank）全互联场景下，每对进程一对 QP 会爆炸（N 进程 → N² QP）。XRC 允许**同节点的多个进程共享一组传输 QP**。',
+    '- **XRC Domain**（ibv_open_xrcd）：多个进程/文件描述符的共享域，域内共享 target QP 与 SRQ。',
+    '- **SRQ（Shared Receive Queue）**：多个 QP 共用接收 WQE 池——接收 buffer 按需取用，省内存（独立 QP 每个都要预挂 recv WQE）。',
+    '- 发送侧：进程用 XRC 语义指定目标 TGID? （目标进程的上下文）——传输 QP 归属某进程但服务所有共享进程。',
+    '',
+    '**验证关注**：',
+    '- 共享 SRQ 的 WQE 分配公平性（一个 QP 不得饿死其他 QP）。',
+    '- 进程退出时的清理（SRQ/QP 引用计数、在途 WQE 处理）。',
+    '- XRC 与普通 RC 混用时的隔离与权限。',
+    '- SRQ 的 limit 触发事件（buffer 不足通知软件补充）与 RNR 的联动。'
+  ].join('\n'),
+  verify: 'SRQ 耗尽 → limit event → 软件补 WQE 的闭环用例；多 QP 公平性统计。'
+},
+
+/* ---------------- R3 RoCEv2 报文格式 ---------------- */
+{
+  id: 'k-r3-01', module: 'r3', title: 'RoCEv2 报文封装逐层解析',
+  tags: ['封装', 'RoCEv2', 'ICRC'],
+  body: [
+    '完整封装（外到内）：**以太网帧头 → IP 头（v4/v6）→ UDP 头（目的端口 4791）→ IB 传输头（BTH [+扩展头]）→ payload → ICRC（4B）**。',
+    '- **UDP 端口 4791**：RoCEv2 的协议标识——交换机/DPU 据此识别 RoCE 流量做 ECN/ECMP 处理。',
+    '- **IP 层**：承载 GID 语义（RoCE GID 常由 IPv6 派生或 MAC 派生），DSCP 用于流量类映射（拥塞控制依赖它）。',
+    '- **ICRC（InfiniBand CRC，4B）**：端到端保护，覆盖 **BTH 起始至 ICRC 前的全部内容**；对 IP/UDP 头的**可变字段（TTL/HopLimit、checksum 等）按规范虚零处理**——包在网络中被路由（TTL 递减）不影响 ICRC 校验（与 PCIe ECRC 同思想，端到端数据完整性）。',
+    '- **MTU 关系**：一个包的 payload ≤ Path MTU；大消息按 MTU 分段（每段都是独立完整包）。',
+    '',
+    '**与 PCIe 类比**：BTH ≈ TLP Header，ICRC ≈ ECRC，PSN ≈ 序列号——可靠传输的思想同构，环境从 PCIe 链路换成了以太网/IP。'
+  ].join('\n'),
+  verify: 'ICRC 覆盖范围边界注入（翻 payload 任一 bit 必须检出）；TTL 变化不影响 ICRC 的虚零处理验证。'
+},
+{
+  id: 'k-r3-02', module: 'r3', title: 'BTH 逐字段解析（8 字节）',
+  tags: ['BTH', '字段', 'PSN'],
+  body: [
+    'Base Transport Header，固定 8B，每个 IB 传输包必备：',
+    '| 字段 | 位宽 | 语义 |',
+    '| Opcode | 8 | 操作码（见 R3 Opcode 表） |',
+    '| Solicited | 1 | 请求对端按 Solicited 策略通知 |',
+    '| MigReq | 1 | 迁移请求（IB 高可用） |',
+    '| PadCount | 2 | 填充字节数/4（payload 对齐 4B） |',
+    '| TransportHdrVersion | 4 | 版本（当前 0） |',
+    '| PartitionKey | 16 | 分区键（隔离/租户，RoCE 常填 0xFFFF 绕过） |',
+    '| FECN | 1 | 前向拥塞标记 |',
+    '| BECN | 1 | 反向拥塞标记 |',
+    '| Reserved | 6 | — |',
+    '| Destination QP | 24 | 目标 QP 号（24bit 空间，QP0=SM、QP1=GSI 管理保留） |',
+    '| AckRequest | 1 | 要求接收方立即回 ACK |',
+    '| Reserved | 7 | — |',
+    '| PSN | 24 | 包序列号（回绕于 2^24） |',
+    '',
+    '**验证要点**：P_Key 校验失败 → 丢包（隔离生效）；AckRequest 语义（置位必须即时 ACK）；PSN 回绕处理（0xFFFFFF→0x000000 连续性）；FECN/BECN 与 ECN 的联动（RoCEv2 复用 IP ECN，BTH 内的 FECN/BECN 在 RoCE 下用法有限）。'
+  ].join('\n'),
+  verify: '24bit PSN 回绕边界用例（0xFFFFFE/FFFFFF/000000 连续流）必须有。'
+},
+{
+  id: 'k-r3-03', module: 'r3', title: 'DETH 与扩展头（RETH/AETH/IMM/Atomic）',
+  tags: ['DETH', 'RETH', 'AETH', '扩展头'],
+  body: [
+    '**DETH（Datagram Extended Transport Header，8B）**：UD 包专用——`Q_Key(32) + Source QP(24) + Reserved(8)`。Q_Key 校验：目标 QP 是"特权 QP"（管理类）时要求 **Q_Key = 0x80010000**（特权值），普通 QP 任意（但对端校验其注册的值）。',
+    '**扩展头按 opcode 出现**（紧跟 BTH 之后）：',
+    '- **RETH（RDMA Extended Transport Header，12B）**：RDMA WRITE/READ 请求携带——`VA(64) + RKey(32) + DMALen(32)`，指定远端内存位置。',
+    '- **AETH（ACK Extended Transport Header，4B）**：ACK/READ Response 携带——`MSN(24) + Credit(8)`。MSN = 已确认完成的消息数-1；Credit = 对端可用的 RDMA READ/Atomic 额度归还信息（0xF 编码"不变"）。',
+    '- **ImmDt（Immediate Data，4B）**：SEND/WRITE 的 IMM 变体携带 4B 用户数据（经 CQE 通知对端，带外传小信息）。',
+    '- **AtomicETH（16B）**：Atomic 请求——VA + RKey + Swap/Addend（64b 各一）+ Compare? （CS 双操作数）。',
+    '',
+    '**布局规则**：扩展头按规范固定顺序排列，PadCount 只作用于 payload 对齐（扩展头不受影响）。'
+  ].join('\n'),
+  verify: '每类扩展头的存在性/顺序/长度 checker；Q_Key 校验（特权/普通）双向用例。'
+},
+{
+  id: 'k-r3-04', module: 'r3', title: 'Opcode 编码表（常用值）',
+  tags: ['opcode', '编码', 'BTH'],
+  body: [
+    '常用 opcode 编码（**完整表以 IBTA spec 传输层 Opcode 表为准**）：',
+    '| Opcode | 含义 |',
+    '| 0x00 | ACK（确认） |',
+    '| 0x01 | SEND_LAST_WITH_IMMEDIATE |',
+    '| 0x02 | SEND_ONLY_WITH_IMMEDIATE |',
+    '| 0x04 | SEND_FIRST |',
+    '| 0x05 | SEND_MIDDLE |',
+    '| 0x06 | SEND_LAST |',
+    '| 0x07 | SEND_ONLY |',
+    '| 0x08 | RDMA_WRITE_FIRST |',
+    '| 0x09 | RDMA_WRITE_MIDDLE |',
+    '| 0x0A | RDMA_WRITE_LAST |',
+    '| 0x0B | RDMA_WRITE_ONLY |',
+    '| 0x0C | RDMA_WRITE_ONLY_WITH_IMMEDIATE |',
+    '| 0x10 | RDMA_READ_REQUEST |',
+    '| 0x11 | RDMA_READ_RESPONSE_FIRST? / 仅 Middle/Last/Only 组合 |',
+    '| 0x14 | COMPARE_SWAP request |',
+    '| 0x15 | FETCH_ADD request |',
+    '| 0x20 | RNR NAK |',
+    '',
+    '- READ Response 不设 First（以 Middle 起始? ——实际：响应只有 Middle/Last/Only 三种形态），值以规范为准。',
+    '- **验证**：opcode×传输类型×分段位置的合法组合表是 checker 的基础；非法 opcode（保留值）必须被丢弃且不 crash。'
+  ].join('\n'),
+  verify: 'opcode 保留值注入（如 0x03/0x0D）→ 静默丢弃 + 计数，不得影响其他 QP。'
+},
+{
+  id: 'k-r3-05', module: 'r3', title: 'UD、GRH 与 IB 原生路由头',
+  tags: ['UD', 'GRH', 'LRH', '路由'],
+  body: [
+    '**IB 原生报文头**（对照 RoCEv2 的差异）：',
+    '- **LRH（Local Route Header，8B）**：IB 链路层路由——VL（虚拟通道）、SL（服务级）、**DLID**（目的本地标识，SM 分配的 16bit 地址）。',
+    '- **GRH（Global Route Header，40B）**：跨子网全局路由，**IPv6 风格**——Ver/TrafficClass/FlowLabel(32) + PayloadLen + NextHdr + HopLimit + **SGID(128) + DGID(128)**。NextHdr 标志后续头类型。',
+    '- **RoCEv2 没有 LRH/GRH**——以太网头+IP 头承担等价功能；GID 语义由 IP 地址 + RoCE GID（MAC/IPv6 派生）映射承接。**"RoCEv2 用 GRH"是常见误解。**',
+    '',
+    '**UD 语义**：',
+    '- 无连接：发往目标 QPN（+Q_Key 校验），不建状态，不 ACK——可能丢/乱序/重复。',
+    '- payload ≤ Path MTU（不分段）。',
+    '- **多播**：DGID 设多播地址，一组 QP 接收；UD 是唯一支持多播的传输类型。',
+    '- 使用场景：节点发现、路由协议、简单遥测——需要可靠性的都不用 UD。'
+  ].join('\n'),
+  verify: 'UD 乱序/重复/丢失的接收行为（用户层可见，硬件不重排）；多播复制与隔离。'
+},
+
+/* ---------------- R4 可靠传输与错误处理 ---------------- */
+{
+  id: 'k-r4-01', module: 'r4', title: 'PSN 与 ACK 语义',
+  tags: ['PSN', 'ACK', 'AETH'],
+  body: [
+    '**RC 的确认机制**：',
+    '- 接收端维护期望 PSN；**ACK 携带"下一个期望 PSN"**（cumulative：之前的全部确认）。',
+    '- **AckRequest=1** 的包 → 接收端必须立即回 ACK（发送方在等关键确认，如 READ 请求）。',
+    '- 无 AckReq → 可**合并 ACK**（攒多个包回一个，规范给出延迟/包数策略）——ACK 风暴与延迟的权衡。',
+    '- **AETH.MSN**：消息级确认（已完成的 message 数-1）——分段消息按"整条消息"确认，不是按包。',
+    '- **AETH.Credit**：RDMA READ/Atomic 的资源额度归还（对端处理完一个 READ，把额度还你）。',
+    '',
+    '**乱序到达**：网络可乱序交付；接收端策略（实现可配）：缓存乱序包等空洞补齐，或丢弃并 NAK（Go-Back-N 语义）。**不缓存 = 带宽浪费，缓存 = 内部 buffer 压力**——这是 NIC 设计的关键取舍。',
+    '',
+    '**验证**：ACK 合并策略的边界（何时必须 ACK）、乱序注入下两种接收策略的行为、MSN 与 PSN 的一致性。'
+  ].join('\n'),
+  verify: 'AckReq 边界（每个包都置位 = ACK 风暴；全不置 = 靠超时）——两端行为都要覆盖。'
+},
+{
+  id: 'k-r4-02', module: 'r4', title: 'Go-Back-N 重传与超时参数',
+  tags: ['重传', 'Go-Back-N', 'timeout', 'retry'],
+  body: [
+    '**两种触发**：',
+    '- **NAK（sequence error）**：收到 PSN 不符 → NAK 携带期望 PSN → 发送端**从该 PSN 起重发所有未确认包**（Go-Back-N，含已发未确认的——即使它们本身没错）。',
+    '- **超时**：ACK 迟迟不回（丢包/对端故障）→ 超时重传最旧未确认包。',
+    '',
+    '**参数**：',
+    '- `timeout`：ACK 超时 = 4.096μs × 2^timeout（编码 0~31；常用秒级取值）。',
+    '- `retry_cnt`：0~7；用尽 → **QP 转 Error**，未完成 WQE 以 RETRY_EXC_ERR 状态刷新（软件能感知并重建）。',
+    '- 重传包与原包 PSN 相同（不重新编号）。',
+    '',
+    '**与 PCIe First Retry 的对比**：PCIe Gen6 重传以 FLIT 为单位、判决在接收端本地（FEC/CRC）；RoCE 重传以 PSN 为单位、依赖接收端 NAK/发送端超时——**没有本地纠错，全靠重传**，所以 RoCE 网络必须尽量不丢包（PFC/ECN 的意义）。',
+    '',
+    '**验证**：丢包/乱序注入 → NAK/超时路径 → 重传流正确（PSN 连续、数据一致）→ retry 用尽 → QP Error → 软件重建全链路。'
+  ].join('\n'),
+  verify: '丢包率×吞吐曲线（重传风暴的量化）；NAK 与超时双路径都触发过。'
+},
+{
+  id: 'k-r4-03', module: 'r4', title: 'RNR NAK 与接收流控',
+  tags: ['RNR', '流控', 'WQE'],
+  body: [
+    '**RNR（Receiver Not Ready）语义**：接收端 RQ 没有可用的 recv WQE（软件没及时 post）→ 回 **RNR NAK**，携带一个 timer 值告知"多久后再试"。',
+    '- **min_rnr_timer**（RTS/RTR 属性）：本端强制要求对端的最小重试间隔（编码指数级，约几百 μs 起步）。',
+    '- **rnr_retry**：发送端 RNR 重试上限；**7 = 无限重试**（长等待场景，如存储后端慢）。',
+    '- 用尽 → CQE 报 **RNR_RETRY_EXC_ERR**，该 WQE 完成（失败态）。',
+    '- 收到 RNR NAK 时，**期间到达的对端重传包如何处理**（丢弃重发后重新 NAK）——实现细节但影响带宽。',
+    '',
+    '**与 credit 的区别**：credit/流控（BTH 之外，IB 链路层 credit 或 RDMA 拥塞控制）防"网络拥塞"；RNR 防"接收方软件没准备好"——两层独立。',
+    '',
+    '**验证**：RNR timer 编码表扫描；rnr_retry=7 的长稳（不误转 Error）；RNR 风暴下带宽与 CPU 影响。'
+  ].join('\n'),
+  verify: 'RNR 场景在存储类负载（后端偶尔慢）是常态而非异常——按常态设计用例。'
+},
+{
+  id: 'k-r4-04', module: 'r4', title: '完成状态码全集与定位方向',
+  tags: ['CQE', '错误码', 'debug'],
+  body: [
+    '常用 ibv_wc 状态码（完整表见 IBTA/verbs 文档）：',
+    '| 状态码 | 含义 | 定位方向 |',
+    '| SUCCESS | 成功 | — |',
+    '| LOC_LEN_ERR | 本地 SGL 长度非法 | 激励/驱动 WQE 构造 |',
+    '| LOC_OP_ERR | 本地 opcode 不支持 | QP 类型 vs 操作 |',
+    '| LOC_PROT_ERR | 本地保护错（SQ 语义） | WQE 格式 |',
+    '| WR_FLUSH_ERR | QP 已 Error，WQE 被冲刷 | 上游错误的下游表现 |',
+    '| MW_BIND_ERR | 绑定 MW 出错 | MW 生命周期 |',
+    '| BAD_RESP_ERR | 对端响应非法（格式错） | 对端互操作问题 |',
+    '| LOC_ACCESS_ERR | 本地访问违例 | lkey/权限/VA |',
+    '| REMOTE_INV_REQ_ERR | 远端判定本端请求非法 | rkey/VA/权限（对端日志） |',
+    '| REMOTE_ACCESS_ERR | 远端访问违例（rkey 无效等） | rkey 生命周期 |',
+    '| REMOTE_OP_ERR | 远端操作错 | 对端内部状态 |',
+    '| RETRY_EXC_ERR | 重试计数用尽 | 链路质量/对端存活 |',
+    '| RNR_RETRY_EXC_ERR | RNR 重试用尽 | 接收端 WQE 供给 |',
+    '',
+    '**关键思路**：REMOTE_* 错误的根因在**对端**（抓对端日志）；WR_FLUSH_ERR 是其他错误的连带表现（先查谁把 QP 打进 Error 的）。'
+  ].join('\n'),
+  verify: '每种错误码至少一个触发用例（注错矩阵直接产出）——错误码是 RDMA debug 的地图。'
+},
+{
+  id: 'k-r4-05', module: 'r4', title: 'ICRC 与数据完整性体系',
+  tags: ['ICRC', '完整性', 'CRC'],
+  body: [
+    '**ICRC 定位**：RC（IB 传输层）的端到端 CRC-32，覆盖 BTH 起（含）到 ICRC 前（含 payload），IP/UDP 可变字段虚零参与。',
+    '- 校验失败 → 包**静默丢弃**（无 NAK！），恢复完全依赖发送端超时重传——所以 ICRC 错误的代价 = 一次完整重传周期。',
+    '- UC/UD 丢弃即丢失（无恢复）。',
+    '',
+    '**RDMA 数据完整性四道防线**（对照 PCIe）：',
+    '1. 以太网 FCS（逐跳链路层）≈ PCIe LCRC；',
+    '2. ICRC（端到端）≈ PCIe ECRC；',
+    '3. rkey/权限检查（访问合法性）≈ 配置空间 ACL；',
+    '4. 应用层校验（如 NVMe 的数据摘要）。',
+    '',
+    '**验证**：ICRC 生成/校验与规范一致性（对拍 rxe 或独立 C 模型）；FCS 过但 ICRC 错的组合注入（链路错但端到端发现——最难查的一类，必须有用例）。'
+  ].join('\n'),
+  verify: '"FCS 正确 + ICRC 错误"注入是高价值 corner：链路层全绿、端到端拦下。'
+},
+
+/* ---------------- R5 无损网络与拥塞控制 ---------------- */
+{
+  id: 'k-r5-01', module: 'r5', title: 'PFC：基于优先级的流控（802.1Qbb）',
+  tags: ['PFC', '无损', '802.1'],
+  body: [
+    '**原理**：以太网传统的 pause（802.3x）会停整个端口；PFC（802.1Qbb）按 **8 个优先级独立暂停**——RDMA 流量所在优先级不丢包，其他流量照常。',
+    '- **PFC 帧**：MAC Control 帧（EtherType 0x8808，目的 MAC 01-80-C2-00-00-01），携带 `Priority Enable Vector`（8bit 位图：哪些优先级被暂停）+ 每 优先级的 `Time`（暂停时长，超时自动恢复或等 XOFF 复位）。',
+    '- **部署**：RDMA 流量映射到专属优先级（CoS/DSCP 分类）→ 交换机/网卡对该优先级使能 PFC → 队列满时发 PFC 暂停对端。',
+    '- **PFC watchdog**：长时间 pause 不恢复（对端挂死/配置错）→ watchdog 强制恢复/丢包/告警，防整口挂死。',
+    '',
+    '**与 RDMA 的关系**：RoCEv2 假设"网络基本不丢包"——丢包触发 Go-Back-N 重传，吞吐崩塌。PFC 是实现"基本不丢包"的手段，但它只管**拥塞性丢包**，不管 CRC 错/缓冲不足。',
+    '',
+    '**验证**：PFC 帧格式/位图/Time 语义、pause 生效与恢复时序、PFC 风暴（持续 XOFF）下 watchdog 行为。'
+  ].join('\n'),
+  verify: 'PFC 使能优先级与非使能优先级的隔离性（互不拖累）必须有用例。'
+},
+{
+  id: 'k-r5-02', module: 'r5', title: 'PFC 死锁与 headroom 计算',
+  tags: ['PFC', '死锁', 'headroom'],
+  body: [
+    '**PFC 死锁成因**：多优先级 + 拓扑中 PFC 依赖成环——A 的优先级 3 被 B 暂停，B 的优先级 4 被 A 暂停，互相等待永久阻塞（路由环路/ECMP 环 + 多优先级交织时更易发生）。',
+    '**缓解**：无环拓扑设计、按优先级隔离（不同业务不同优先级不交叉路由）、PFC watchdog 兜底、极端时降级丢包。',
+    '',
+    '**Headroom（预留缓冲）计算**：PFC 生效有延迟——从对端队列满到 XOFF 帧到我这再到我停发，期间的在途数据必须被接收方缓冲吸收，否则丢包：',
+    '- headroom ≈ 链路带宽 ×（XOFF 传播延迟 + 对端响应 + 帧处理时间）+ 若干最大帧；',
+    '- 距离越长/速率越高，headroom 越大（400G 长距场景显著）——配置不足 = PFC 失效反而丢包。',
+    '',
+    '**验证**：headroom 不足注入（缓冲水位逼近上限 + 突发）→ 观察 PFC 生效前是否丢包；死锁场景仿真（环+多优先级互压）。'
+  ].join('\n'),
+  verify: 'PFC 参数（watermark/watchdog）与 headroom 是部署验证必查项——参数错 = 无损网变丢包网。'
+},
+{
+  id: 'k-r5-03', module: 'r5', title: 'ECN 与 CNP：拥塞通知机制',
+  tags: ['ECN', 'CNP', '拥塞'],
+  body: [
+    '**ECN（Explicit Congestion Notification）**：IP 头的 2bit——`00` 不支持、`01/10` ECT（ECN capable）、`11` CE（拥塞经历）。',
+    '- **交换机**：队列深度越过 **Kmin** 开始按概率标 CE（**Kmax** 全标，**Pmax** 概率上限——RED/ECN marking 三参数）。',
+    '- **接收 NIC**：看到 CE 标记的 RoCE 包 → 生成 **CNP**（Congestion Notification Packet，RoCEv2 定义：BTH opcode 0x81）沿反向路径发回**发送端**。',
+    '- **发送 NIC**：收 CNP → 降速（DCQCN，见下卡）。',
+    '',
+    '**设计意图**：PFC 管"不丢包"（被动、晚），ECN 管"早点降速"（主动、早）——理想状态是 ECN 把拥塞控制在 PFC 触发之前（PFC watermark 远高于 ECN Kmax）。',
+    '',
+    '**验证**：CNP 报文格式/生成时机/聚合（不是每个 CE 包都发 CNP，会风暴）、Kmin/Kmax/Pmax 参数扫描下的标记率、CNP 丢失/风暴的系统行为。'
+  ].join('\n'),
+  verify: 'ECN 参数与 PFC watermark 的相对关系（ECN 先于 PFC）是部署验证的关键组合。'
+},
+{
+  id: 'k-r5-04', module: 'r5', title: 'DCQCN 算法状态机',
+  tags: ['DCQCN', '拥塞', '算法'],
+  body: [
+    '**DCQCN（Data Center QCN）**= PFC + ECN/CNP + 速率调节的完整拥塞控制体系，三个角色：',
+    '- **CP（Congestion Point，交换机）**：队列过 Kmin → 按 Pmax 概率标 CE。',
+    '- **NP（Notification Point，接收 NIC）**：收到 CE 包 → 生成/聚合 CNP（定时器内多个 CE 合一个 CNP，防风暴）。',
+    '- **RP（Reaction Point，发送 NIC）**：收 CNP → **降速**：当前速率 ×（1 - alpha/2）？核心是维护 alpha（降速因子，指数加权更新）；停止收 CNP 后**定时器步进升速**（Rate Increase）恢复带宽。',
+    '',
+    '**调参要点**：alpha 更新率（快→抖动，慢→迟钝）、升速步长（大→震荡，小→恢复慢）、NP 聚合定时器——**没有全局最优，按负载画像调**（AI 突发 vs 存储稳态需求不同）。',
+    '',
+    '**验证重点**（RoCE 网卡验证的硬骨头）：',
+    '- 多流竞争下的公平收敛（各流最终均分带宽？）。',
+    '- CNP 丢失/延迟/风暴下的稳定性（不震荡、不死锁在低速率）。',
+    '- 与 PFC 的协同（降速不及时 → 队列涨 → PFC 介入 → 不应频繁）。',
+    '- 长稳：吞吐/时延/标记率随时间的稳定性。'
+  ].join('\n'),
+  verify: 'DCQCN 行为验证需要系统级仿真（多节点），单 NIC RTL 验证侧重 RP/NP 的协议行为正确性。'
+},
+{
+  id: 'k-r5-05', module: 'r5', title: 'ETS 与多业务 QoS（802.1Qaz）',
+  tags: ['ETS', 'QoS', '多业务'],
+  body: [
+    '**ETS（Enhanced Transmission Selection）**：802.1Qaz 定义的带宽分配——8 个优先级归并成若干 **TC（Traffic Class）**，每个 TC 分配带宽权重（如 RDMA 50% / 存储 30% / 普通 TCP 20%），支持严格优先级（低时延业务）与 ETS 加权轮询混合。',
+    '- **典型 AI/存储集群配置**：RDMA 流量专属 TC + PFC；其他业务共享 TC 无 PFC；CNP 也走 RDMA TC（不能被压）。',
+    '- **DSCP→优先级映射**：入口按 DSCP 分类（RoCEv2 数据包与 CNP 用不同 DSCP 区分）。',
+    '',
+    '**部署验证清单**：',
+    '- 分类正确性（各 DSCP 进对的 TC/队列）。',
+    '- 带宽配额生效（压制/保障边界）。',
+    '- RDMA TC 的 PFC/ECN 配置与其他 TC 独立。',
+    '- 极限场景：某 TC 风暴不拖垮其他 TC（隔离性）。',
+    '- CNP 优先保障（CNP 被拥塞压住 → 降速信号丢失 → 拥塞失控的恶性循环）。'
+  ].join('\n'),
+  verify: 'CNP 必须走最高保障——"拥塞控制信号本身被拥塞丢掉"是真实事故模式。'
+},
+
+/* ---------------- R6 应用场景 ---------------- */
+{
+  id: 'k-r6-01', module: 'r6', title: 'AI 训练：NCCL、GPUDirect 与在网计算',
+  tags: ['AI', 'NCCL', 'GPUDirect', 'SHARP'],
+  body: [
+    '**数据通路**：分布式训练的梯度同步是集合通信（AllReduce/AllGather），由 **NCCL** 库在 GPU 间调度：节点内走 NVLink/PCIe P2P，跨节点走 **GPUDirect RDMA**——NIC 的 DMA 引擎**直接读写 GPU 显存**（GPU BAR 映射 + IOMMU/P2P 授权），绕过 CPU 内存拷贝，带宽与时延都省一个数量级。',
+    '- **SHARP（在网聚合）**：交换机/NPU 上执行聚合运算（sum 等），AllReduce 流量不必全量到根节点再分发——网络即计算。',
+    '- **流量画像**：集合通信是**同步突发**（所有 rank 同时刻爆发同型流量），瞬时压力极大；NCCL 参数（NCCL_IB_HCA/NCCL_IB_QPS_PER_CONN 等）决定 QP/通道布局。',
+    '- **对 NIC 验证的要求**：万级 QP/通道、同步突发下的拥塞（DCQCN 大考）、长稳（训练跑数天）、GPUDirect 路径的 IOMMU/权限交互。',
+    '- **故障画像**：一张卡掉线拖死整个作业——错误恢复（QP 重建）的速度直接等于训练任务的损失。'
+  ].join('\n'),
+  verify: '同步突发流量模型（多源同时爆发）+ QP 大规模扩展性是 AI 场景验证的两大主题。'
+},
+{
+  id: 'k-r6-02', module: 'r6', title: '分布式存储与 NVMe-oF',
+  tags: ['存储', 'NVMe-oF', 'SPDK'],
+  body: [
+    '**NVMe-oF**（NVMe over Fabrics）：把 NVMe 协议从本地 PCIe 拓展到网络——RDMA 是其主流传输绑定（也有 TCP/FC）。**Admin Queue + IO Queue 对** 直接映射到 RDMA QP（SQ/CQ 语义同构——NVMe 本来就是为 PCIe 队列设计的）。',
+    '- **SPDK**：用户态 NVMe 驱动栈，配合 RDMA 实现全用户态存储 IO 路径（kernel bypass 的极致）。',
+    '- **流量画像**：小 IO（4K）× 极高 IOPS × 时延敏感；后端抖动 → RNR 场景常态（rnr_retry=7 无限等就为它设计）。',
+    '- **一致性要求**：块存储语义下**写必须保序**（RC 同 QP 保序满足）+ Fencing（故障节点必须被立刻隔离，防"僵尸写"——cluster 级别的一致性协议负责，NIC 的错误快速上报是前提）。',
+    '- **验证重点**：IO 路径时延分布（P99.9）、RNR/重传恢复对 IOPS 的影响、错误注入后的数据完整性（块内容逐一比对）。'
+  ].join('\n'),
+  verify: '存储场景 = "小包高频 + 保序 + 快速故障隔离"三个关键词的组合验证。'
+},
+{
+  id: 'k-r6-03', module: 'r6', title: 'HPC 与 MPI 的 RDMA 映射',
+  tags: ['HPC', 'MPI'],
+  body: [
+    '**MPI 语义到 RDMA 的映射**（OpenMPI/MPICH 的 transport 层）：',
+    '- **小消息（eager 协议）**：直接 SEND，对端预挂 buffer 收下即完成（低时延）。',
+    '- **大消息（rendezvous 协议）**：先握手（对端登记接收位置）→ 发送端 RDMA WRITE 直写对端内存（+IMM 通知完成）——大带宽路径。',
+    '- **tag matching**：MPI 消息按 (src, tag, comm) 匹配——匹配逻辑在软件/NIC offload；乱序到达的消息先缓存等匹配。',
+    '- **collectives offload**：AllReduce 等下放到网络（IB SHARP / 交换机辅助）。',
+    '',
+    '**XRC/SRQ 的主场**：单节点多 rank 共享连接（见 R2 XRC 卡）。',
+    '',
+    '**验证视角**：MPI 是"消息语义 + 匹配"层，RDMA 提供管道——验证关注混合大小消息、多 rank 并发、 rendezvous 与 eager 切换边界、对端缓存不足时的降级路径。'
+  ].join('\n'),
+  verify: 'eager/rendezvous 切换阈值附近的边界负载；tag matching 乱序容错。'
+},
+{
+  id: 'k-r6-04', module: 'r6', title: '云与虚拟化：SR-IOV、vDPA 与租户隔离',
+  tags: ['云', 'SR-IOV', 'vDPA', '隔离'],
+  body: [
+    '**SR-IOV**：NIC 分出 PF（物理功能，管管理员用）+ 多个 VF（虚拟功能，直通给 VM/容器）——VF 拥有完整 RDMA 能力，性能最好；代价：**热迁移难**（VF 状态在硬件里）。',
+    '- **vDPA/virtio-over-RDMA**：数据面直通硬件、控制面软件模拟（virtio 接口）——迁移友好与性能的折中。',
+    '- **租户隔离**：P_Key（IB 分区）/ VLAN-VNI 映射（RoCE）、QP 号空间隔离（QPN 全局唯一，VF 间不得互访——硬件 ACL）、rkey 生命周期管理（租户间 MR 不得互通）。',
+    '- **网络策略**：租户间 QP 建立要过策略检查（如同 OVS 流表）——DPU/SmartNIC 时代由 DPU 承担。',
+    '',
+    '**验证重点**：VF 数量扩展（每 VF 的 QP/资源配额）、租户间隔离性（恶意 rkey/Q_Key 探测必须失败）、热迁移对 RDMA 连接的影响（vDPA 路径）、云规模下的 QPN 资源管理。'
+  ].join('\n'),
+  verify: '隔离性用例（租户 A 试图访问租户 B 的 MR/QP）是安全验证，必须全覆盖。'
+},
+{
+  id: 'k-r6-05', module: 'r6', title: 'IB 拓扑与子网管理（对照 RoCE 的差异）',
+  tags: ['IB', '拓扑', 'SM'],
+  body: [
+    '**IB 网络由 SM（Subnet Manager）集中管理**（通常驻留在某台交换机上）：',
+    '- 发现拓扑 → 给每个端口分配 **LID**（16bit 本地地址）→ 计算各交换机的**路由表**（线性转发表，常见 fat-tree 的"向上向下"路由防拥塞）→ 下发。',
+    '- **VL/SL**：IB 的虚拟通道/服务级——链路层 credit 流控按 VL 独立（IB 天然无损的机制）。',
+    '- **自适应路由**：部分交换机支持按拥塞动态选路（MLNX 拓展）。',
+    '',
+    '**与 RoCE 的管理差异**：RoCE 完全复用以太网/IP 管理（路由协议/SDN），无 SM——换来生态、失去 IB 的精细链路控制（VL credit）。',
+    '',
+    '**验证视角**：做 RoCE NIC 验证基本不碰 SM，但理解 IB 有助于把握"RoCEv2 把哪些 IB 机制搬走了、哪些没搬"——**传输层全搬、链路层 credit 没搬（换成了以太网 PFC）**，这正是 RoCE 依赖无损以太网配置的根本原因。'
+  ].join('\n'),
+  verify: '概念卡：对照 R5 理解"为什么 RoCE 需要 PFC"——链路层 credit 缺位的补偿。'
+},
+
+/* ---------------- R7 RDMA 验证专题 ---------------- */
+{
+  id: 'k-r7-01', module: 'r7', title: 'RoCE NIC 验证环境架构',
+  tags: ['验证环境', 'NIC', '架构'],
+  body: [
+    'DUT = RoCE NIC。三方 agent + 双视角 scoreboard：',
+    '- **PCIe VIP（主机侧）**：捕获门铃 MMIO 写、服务 DMA（提供内存模型：WQE/CQE/MR 数据）、收发 MSI-X——模拟主机驱动行为。',
+    '- **Ethernet/RoCE VIP（网络侧）**：收发以太网/IP/UDP/BTH 包，支持 RoCE 语义（PSN/重传引擎/ECN 标记/拥塞模型）。',
+    '- **主机软件模型**：驱动语义层——WQE 生成器（按测试意图构造 opcode/SGL/标志）、QP/资源管理器、完成处理器。',
+    '- **Scoreboard 双视角**：网络侧包流（去 ICRC 后）↔ 主机侧 DMA 数据流逐一对账；WQE ↔ 发出的包 ↔ CQE **三方对账**（一个 WR 应产生确定的包序列与一个完成）。',
+    '- **参考模型**：完整 RDMA 传输语义（PSN 管理/重传/RNR/分段）——可从 Linux rxe.ko 移植（见 R8）。',
+    '',
+    '**关键难点**：三方时序耦合（门铃→DMA→发包→回包→CQE→中断）——任何一方的时序扰动都应被 scoreboard 正确容忍而非误报。'
+  ].join('\n'),
+  verify: '三方对账是 RoCE NIC 验证的核心资产——先搭对账，再谈随机。'
+},
+{
+  id: 'k-r7-02', module: 'r7', title: '流量模型与激励设计',
+  tags: ['流量', '激励', '分段'],
+  body: [
+    '**激励维度**（组合空间巨大，需分层收敛）：',
+    '- QP：类型（RC/UC/UD）× 数量（1 到万级）× 状态路径；',
+    '- 操作：opcode 混合（SEND/WRITE/READ/Atomic 比例）、message 大小分布（inline 边界、MTU 边界、multi-MTU 大消息）、SEND 的 recv 配对率（RNR 诱因）；',
+    '- MTU：512/1024/2048/4096 与对端一致性；',
+    '- 并发：outstanding 深度（max_rd_atomic 边界）、doorbell 批量（一次 ring 多 WQE）、多 QP 交错。',
+    '',
+    '**必须覆盖的场景**：',
+    '- 大消息分段全序列（First/Middle/Last 边界：=MTU、MTU±1、超长）。',
+    '- 多 QP 公平性（同优先级流均分带宽）与饥饿检测。',
+    '- 同步突发（AI 集合通信画像）：多 QP 同刻爆发。',
+    '- 长稳（10^9+ 事务）：资源泄漏/计数器回卷/缓慢退化。'
+  ].join('\n'),
+  verify: '约束随机为主 + 定向边界为辅；流量画像参数化（AI/存储/HPC 模板）。'
+},
+{
+  id: 'k-r7-03', module: 'r7', title: 'RDMA 错误注入矩阵',
+  tags: ['注错', '矩阵', '错误'],
+  body: [
+    '**网络侧注入**（RoCE VIP 能力）：',
+    '- 丢包（数据包/ACK/CNP 分类丢）、乱序、延迟、重复；',
+    '- PSN 跳变/回绕边界错误；',
+    '- ICRC 破坏（FCS 正确 + ICRC 错的高价值组合）；',
+    '- BTH 字段错（P_Key/Q_Key/DestQP 不存在）；',
+    '- ECN：误标/漏标/标记风暴；PFC：风暴/丢失/时序扰动；',
+    '',
+    '**主机侧注入**（PCIe VIP/软件模型）：',
+    '- doorbell-WQE 乱序（WQE 未可见先 ring）、重复 doorbell、门铃跨页/wc 合并扰动；',
+    '- WQE 格式错（opcode 与 QP 类型不符、SGL 长度 0/超限）；',
+    '- MR 越界（VA±1、rkey 过期/伪造）、Q_Key 错、CQ 满；',
+    '- 寄存器/属性竞态（QP 迁移中 post WQE）。',
+    '',
+    '**预期行为表**：每行注入 → 明确期望（NAK/RNR/超时重传/CQE 错误码/QP Error/静默丢弃）→ 端到端一致性断言兜底。'
+  ].join('\n'),
+  verify: '矩阵行数即验证完备性指标；每行必须有确定性判据（非"不挂就行"）。'
+},
+{
+  id: 'k-r7-04', module: 'r7', title: 'QP 状态机验证与属性一致性',
+  tags: ['QP', '状态机', '断言'],
+  body: [
+    '- **合法迁移全覆盖**：RESET→INIT→RTR→RTS 主路径 + SQD/SQE/ERROR 分支 + Error→Reset 重建；每条迁移的属性生效验证（INIT 后 access_flags 生效等）。',
+    '- **非法迁移拒绝**：跳级（RESET→RTS）、回退（RTS→INIT）、ERROR 态 modify 部分字段——返回错误码且状态不变。',
+    '- **SVA 断言示例**：ERROR 态不再发新包（数据面静默）；RTR 前 SQ 不发包；CQE 刷新顺序 = WQE 顺序（同 QP 内）。',
+    '- **属性两端一致性**：PSN/MTU/rd_atomic 协商（错配必须显式失败，不静默错位）；modify 竞态（另一线程同时 post/modify 的串行化）。',
+    '- **并发 QP 独立性**：一个 QP 的 Error/重传不得污染其他 QP 的状态与数据（隔离性断言）。'
+  ].join('\n'),
+  verify: '状态机覆盖率（状态×迁移×属性组合）+ 隔离性断言是 QP 验证的双柱。'
+},
+{
+  id: 'k-r7-05', module: 'r7', title: '一致性与数据完整性验证',
+  tags: ['一致性', 'scoreboard', '保序'],
+  body: [
+    '- **保序断言**：RC 同 QP 内 message 按序完成/交付（网络乱序由接收端重组）——乱序注入后顺序必须不变。',
+    '- **数据完整性**：网络侧 payload ↔ 主机 DMA 内存逐字节比对（端到端）：WRITE 数据、READ 返回数据、SEND 到 recv buffer——三路全对账。',
+    '- **不重不漏**：重传场景下对端收到的数据恰好一份（重复包被 PSN 去重）；分段重组无缺段。',
+    '- **跨 QP/跨 VF 隔离**：数据不串台（QPN 过滤、rkey 隔离）。',
+    '- **ICRC 端到端**：链路层 FCS 全对但内容被改的组合（仿中间篡改）必须被 ICRC 拦截。',
+    '- **异步一致性**：CQE 报告的字节数/状态与实际传输一致（不能"报成功丢数据"）。'
+  ].join('\n'),
+  verify: '铁律同 PCIe：无论注入什么，成功完成的数据必须与发送端一致，失败必须显式报错。'
+},
+{
+  id: 'k-r7-06', module: 'r7', title: '性能验证：线速、时延与扩展性',
+  tags: ['性能', '线速', '时延'],
+  body: [
+    '- **吞吐**：单流线速（100/200/400G 对应包速率），小包（64B）与大包（MTU）分别测——小包是包处理能力瓶颈；多流聚合吞吐与公平性。',
+    '- **时延**：全链路分解——WQE DMA → 处理 → 发包 → 对端 → CQE → 中断；分段统计 P50/P99.9（时延尾延迟是 AI/存储的要害）。',
+    '- **重传敏感度**：注入不同丢包率（1e-6~1e-3）下的吞吐/时延曲线——无损网应在 PFC 保护下贴近零重传。',
+    '- **扩展性**：QP 数量扫描（1K/10K/100K）——QP 上下文缓存命中、门铃处理吞吐、内存占用；cache miss 悬崖是设计边界。',
+    '- **方法**：RTL 仿真跑不动线速量级——协议正确性在仿真，性能在 emulation/FPGA 原型 + 真实流量（perftest）。',
+    '- **门禁化**：吞吐/时延基线入库，回归对比趋势。'
+  ].join('\n'),
+  verify: '小包线速 + 时延 P99.9 + QP 扩展悬崖——三个数字决定 NIC 的市场竞争力。'
+},
+{
+  id: 'k-r7-07', module: 'r7', title: '一致性与互操作测试',
+  tags: ['合规', '互操作', 'perftest'],
+  body: [
+    '- **IBTA 合规**：InfiniBand Trade Association 定义 RoCE 一致性程序（协议行为/报文格式/时钟与状态机检查）——产品上市前过合规是生态入场券。',
+    '- **互操作矩阵**：对端 NIC（ConnectX 系列）、交换机（不同厂商的 ECN/PFC 实现）、驱动栈（rdma-core 版本）——**拥塞配置的互操作**（对端 ECN 参数不同 → 你的 DCQCN 行为）是重灾区。',
+    '- **工具链即负载**：perftest（ib_send_bw/ib_send_lat/ib_read_bw/ib_write_bw、qperf）是行业通用基准——验证环境的激励要与这些工具的流量模式兼容。',
+    '- **软件栈兼容**：rdma-core 的 verbs 语义演进（新 API/废弃 API）、内核 ULP（NVMe-oF/NFS over RDMA）。',
+    '- **长稳与压测**：真实应用画像（NCCL/SPDK/fio）跑天级长稳，抓 RTL 仿真永远看不到的缓慢退化。'
+  ].join('\n'),
+  verify: '互操作测试 = 用真实世界的多样性补 RTL 验证的单一假设。'
+},
+
+/* ---------------- R8 VIP 与实战 ---------------- */
+{
+  id: 'k-r8-01', module: 'r8', title: 'RDMA/RoCE VIP 生态',
+  tags: ['VIP', 'RoCE', '生态'],
+  body: [
+    'RoCE NIC 验证需要 **Ethernet VIP + RoCE 协议能力 + PCIe VIP** 的组合（具体型号/能力以厂商最新文档为准）：',
+    '- **Synopsys DesignWare VIP**：Ethernet VIP + RoCEv2 附加包（IB 传输语义/PSN/重传引擎/拥塞模型），与其 PCIe/CXL VIP 组合可搭完整 NIC 环境——组合生态是其最大优势。',
+    '- **Cadence VIP**：Ethernet/IP 家族，与 Xcelium 集成，RoCE 能力随版本演进。',
+    '- **Avery 等**：RoCE VIP 单项供应商，性价比路线。',
+    '- **自制 ETH BFM + rxe 参考模型**：早期 bring-up 可行，但 PSN/重传/拥塞语义工作量大。',
+    '',
+    '**能力评估维度**：RoCE 语义完整度（PSN/NAK/RNR 引擎？ECN/CNP 生成与响应？）、注错粒度（丢包/乱序/延迟/位错/CNP 扰动）、拥塞行为建模（可编程 ECN 标记/DCQCN 对端模型）、统计（标记率/丢包率/时延直方图）、与 PCIe VIP 的协同接口（内存共享/DMA 服务）。'
+  ].join('\n'),
+  verify: '选型 checklist 与 PCIe VIP 对齐（M12），外加拥塞建模与三方协同两项特有维度。'
+},
+{
+  id: 'k-r8-02', module: 'r8', title: 'SoftRoCE（rxe.ko）作为黄金参考模型',
+  tags: ['rxe', 'SoftRoCE', '参考模型'],
+  body: [
+    '**Linux SoftRoCE（rxe.ko）**：内核态的软件 RoCEv2 实现——完整的 IB 传输语义（QP 状态机/PSN/重传/RNR/ICRC/分段），跑在普通以太网上。',
+    '**验证用法**：',
+    '- **协议参考**：语义有争议时读 rxe 源码（drivers/infiniband/sw/rxe）——一个"活的规范实现"；',
+    '- **对拍**：相同 WQE 序列分别喂 RTL NIC 与 rxe（经标准化网络环境），比对生成的包流（BTH/PSN/opcode/数据）——参考模型对拍的经典玩法；',
+    '- **激励源**：rdma-core + perftest 直接跑在 SoftRoCE 上，生成真实软件流量画像喂给验证环境。',
+    '',
+    '**局限**：rxe 的实现选择（如乱序包处理策略、ACK 合并参数）是"一种合法实现"而非唯一——**对拍差异要先查规范再判谁错**；性能相关（时延/调度）不代表硬件行为。',
+    '',
+    '配套：rdma-core（用户态 verbs 库源码 = API 权威行为）、ibv_* 系列工具。'
+  ].join('\n'),
+  verify: '对拍流水线：WQE 转储 → rxe/RTL 双跑 → 包级 diff → 差异归类（规范模糊 vs bug）。'
+},
+{
+  id: 'k-r8-03', module: 'r8', title: '实战：RDMA NIC 与 PCIe VIP 协同',
+  tags: ['实战', '协同', 'PCIe'],
+  body: [
+    'NIC 验证的本质：**三条通路的时间耦合**——',
+    '1. **提交通路**：主机驱动写 WQE 到内存（PCIe VIP 的 memory model 服务）→ 门铃 MMIO 写（VIP 捕获）。',
+    '2. **DMA 通路**：NIC 发起 DMA 读 WQE/读 MR 数据/写 CQE/写对端内存（RDMA WRITE 场景）——PCIe VIP 扮演内存与 DMA target。',
+    '3. **通知通路**：CQ arm → MSI-X 中断（VIP 捕获）→ 软件模型处理。',
+    '',
+    '**联合 scoreboard 三方对账**：一个 WR（WQE）↔ 确定的包序列（网络 VIP）↔ 确定的完成（CQE 内容+中断）——任何一方缺失/多余/内容错即 fail。READ 的多包响应、大消息分段、重传的包都要纳入对账模型。',
+    '**时序验证点**：WQE 可见性先于门铃（内存序）；doorbell 后 WQE 的 DMA 读取时限；CQE 写入与中断的先后（中断唤醒软件时 CQE 必须可见——memory ordering！）；多 QP 的 DMA 公平调度。',
+    '**实用技巧**：PCIe VIP 的 latency 注入（MMIO/DMA 延迟扫描）暴露 NIC 端的时序假设漏洞。'
+  ].join('\n'),
+  verify: '三方对账 + memory ordering 断言（CQE 可见性 vs 中断）是 NIC 验证区别于纯协议验证的标志。'
+},
+{
+  id: 'k-r8-04', module: 'r8', title: '实战常见坑 Top 8（RoCE NIC）',
+  tags: ['坑', '实战', '经验'],
+  body: [
+    '1. **WQE/doorbell 乱序**：设备在 WQE 未完全可见时读——write-combining 边界；表现为偶发数据错，极难查（必须主动注入验证设备端顺序假设）。',
+    '2. **CQE 可见性 vs 中断**：中断先于 CQE 数据到达软件 → 读到旧数据——NIC 端必须保证写序（平台内存模型）。',
+    '3. **门铃去抖/合并**：连续多次 ring 的合并处理与索引回卷——回卷边界（2^24? QPN/索引位宽）经典。',
+    '4. **CQE 聚合与中断合并边界**：聚合窗口内最后事件丢失/延迟超标——coalescing 参数边界扫描。',
+    '5. **QPN 冲突**：VF/PF 全局 QPN 分配器冲突（大规模 VF 场景）；QPN=0/1 等保留值误用。',
+    '6. **MR 生命周期**：dereg 时在途 DMA/网络访问——必须等在途清零（引用计数），否则内存重用后写飞（硅后最难查的内存踩踏）。',
+    '7. **定时器精度**：仿真时间 vs 真实时间（retry/RNR/coalescing 定时器在仿真里被放大）——参数化+时间抽象。',
+    '8. **PSN 回卷**：24bit 回绕点的比较逻辑（无符号比较陷阱）——强制回绕边界用例。'
+  ].join('\n'),
+  verify: '坑 1/2/6 属于"硅后极难查、硅前必须防"——排序与生命周期的断言要早建。'
+},
+
+/* ---------------- R9 资料与工具 ---------------- */
+{
+  id: 'k-r9-01', module: 'r9', title: 'RDMA 规范与标准清单',
+  tags: ['资料', '规范', 'IBTA'],
+  body: [
+    '- **InfiniBand Architecture Specification Vol.1/Vol.2（IBTA）**：RDMA 传输语义的根——**IBTA 官网免费注册下载**（对比 PCIe 的会员制，上手友好）。传输层（QP/PSN/重传）、报文格式（BTH/扩展头）、Verbs 语义全在 Vol.1。',
+    '- **RoCEv2 定义**：IB spec 的 Routing/RoCEv2 附件（Annex A16? 以 IBTA 文档列表为准）——定义以太网/IP 封装与拥塞配合。',
+    '- **NVMe-oF Specification**（NVM Express 组织，免费）：存储场景的传输绑定。',
+    '- **IEEE 802.1Qbb（PFC）/802.1Qaz（ETS）/802.3x**：无损以太网的链路层基础。',
+    '- **论文（拓展）**：DCQCN（SIGCOMM 2015）、HPCC、定时器/参数调优系列——理解拥塞控制设计动机。',
+    '- **PCIe Base 6.5**（你已有）：R4 对比卡、R8 协同卡的 PCIe 侧知识回看这里。'
+  ].join('\n'),
+  verify: '阅读顺序建议：IB Vol.1 传输层章节 → RoCEv2 附件 → 802.1Qbb → DCQCN 论文。'
+},
+{
+  id: 'k-r9-02', module: 'r9', title: '源码与工具链',
+  tags: ['工具', '源码', 'perftest'],
+  body: [
+    '- **rdma-core**（GitHub Linux-rdma 组织）：用户态 verbs 库（libibverbs/libibumad）——API 行为的权威参考，所有 RDMA 应用的地基。',
+    '- **Linux kernel drivers/infiniband**：mlx5 驱动（工业级 NIC 驱动的教科书）+ **sw/rxe（SoftRoCE，可读可改的协议参考实现）**。',
+    '- **perftest**：ib_send_bw/ib_send_lat/ib_read_bw/ib_write_bw/ib_atomic_bw——行业标准基准工具，验证环境激励的兼容目标。',
+    '- **qperf**：带宽/延迟综合测量。',
+    '- **SPDK + nvme-cli**：存储路径（NVMe-oF over RDMA）实践。',
+    '- **ethtool/sysfs**：PFC/ECN 参数查看与调整（部署验证必会）。',
+    '- **实验环境**：两台带 RoCE 网卡的机器（或云上实例）+ 交换机 PFC/ECN 配置；无硬件时 SoftRoCE 虚拟对即可跑通全部 verbs 语义学习。'
+  ].join('\n'),
+  verify: '动手路线：SoftRoCE 双机（虚拟机即可）→ perftest 跑通 → ibv_ 自己写 client/server → 读 rxe 源码对照本系统 R1-R4。'
 },
 ];
 

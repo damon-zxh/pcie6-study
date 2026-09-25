@@ -3,7 +3,7 @@
  * 版本号决定缓存名：更新站点内容时把 vN 提升为 vN+1，
  * 旧缓存会在新 SW 激活时自动清除。
  * ============================================================ */
-var CACHE = 'pcie6-study-v2';
+var CACHE = 'pcie6-study-v3';
 var ASSETS = [
   './',
   './index.html',
@@ -11,6 +11,7 @@ var ASSETS = [
   './js/data-knowledge.js',
   './js/data-questions.js',
   './js/data-plan.js',
+  './js/data-spec-refs.js',
   './js/app.js',
   './manifest.webmanifest',
   './icon-192.png',

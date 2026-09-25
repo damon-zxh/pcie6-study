@@ -94,7 +94,7 @@ function download(name, content, mime) {
 /* ---------------- 持久化状态 ---------------- */
 var LS_KEY = 'pcie6-study-v1';
 var defaults = function () {
-  return { read: [], wrong: {}, stats: {}, plan: {}, planStart: '', theme: 'light', days: [] };
+  return { read: [], wrong: {}, stats: {}, plan: {}, planStart: '', theme: 'light', days: [], specShow: true };
 };
 var state = defaults();
 function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) { /* 隐私模式等 */ } }
@@ -155,35 +155,100 @@ var App = {
   }
 };
 
-/* ---------------- 今日横幅 ---------------- */
-function currentWeek() {
-  if (!state.planStart) return null;
-  var d = diffDays(todayStr(), state.planStart);
-  if (d < 0) return 0;
-  return Math.min(12, Math.floor(d / 7) + 1);
+/* ---------------- 今日横幅与计划顺延 ---------------- */
+/* 顺延算法：当前周 = 第一个未全勾选的周；第 N 周实际开始 =
+ * max(计划开始日, 上一周实际完成日+1) —— 落后自动顺延，提前则提前。
+ * state.plan[key] 存完成时间戳；旧数据 true 视为"已完成但时间未知"，
+ * 以该周计划结束日回退，保持向后兼容。 */
+function planWeeks() {
+  var base = state.planStart ? parseDate(state.planStart) : null;
+  var out = [];
+  var prevEnd = null;
+  STUDY_PLAN.forEach(function (wk) {
+    var planned = base ? new Date(base.getTime() + (wk.week - 1) * 7 * 86400000) : null;
+    var actualStart = null;
+    if (planned) {
+      actualStart = planned;
+      if (wk.week > 1 && prevEnd) {
+        var cand = new Date(prevEnd.getTime() + 86400000);
+        if (cand > actualStart) actualStart = cand;
+      }
+    }
+    var done = 0, lastTs = 0;
+    wk.tasks.forEach(function (t, i) {
+      var v = state.plan['w' + wk.week + '-' + i];
+      if (v) { done++; if (typeof v === 'number' && v > lastTs) lastTs = v; }
+    });
+    var allDone = done === wk.tasks.length;
+    var actualEnd = null;
+    if (allDone && lastTs) actualEnd = new Date(lastTs);
+    else if (allDone && planned) actualEnd = new Date(planned.getTime() + 7 * 86400000 - 86400000);
+    if (actualEnd) prevEnd = actualEnd;
+    out.push({ wk: wk, planned: planned, actualStart: actualStart,
+      actualEnd: actualEnd, done: done, total: wk.tasks.length,
+      allDone: allDone, shift: (actualStart && planned)
+        ? Math.max(0, Math.round((actualStart - planned) / 86400000)) : 0 });
+  });
+  return out;
 }
+function planCurrent() {
+  if (!state.planStart) return null;
+  var wks = planWeeks();
+  for (var i = 0; i < wks.length; i++) if (!wks[i].allDone) return wks[i];
+  return wks[wks.length - 1].allDone ? wks[wks.length - 1] : null;
+}
+function fmtShort(d) { return d ? (d.getMonth() + 1) + '/' + d.getDate() : '—'; }
 function renderBanner() {
-  var b = $('#todayBanner'), w = currentWeek();
-  if (w === null) {
+  var b = $('#todayBanner');
+  if (!state.planStart) {
     b.hidden = false;
     b.innerHTML = '<div class="today-banner-inner">👋 欢迎使用！先到 <b>【计划】</b> 页设置开始日期，这里会变成每日学习提醒。<span class="link" onclick="App.go(\'plan\')">去设置 →</span></div>';
     return;
   }
-  if (w === 0) {
+  var wks = planWeeks();
+  var d = diffDays(todayStr(), state.planStart);
+  if (d < 0) {
     b.hidden = false;
     b.innerHTML = '<div class="today-banner-inner">📅 计划将于 <b>' + esc(state.planStart) + '</b> 开始，先随便看看知识库热热身。<span class="link" onclick="App.go(\'kb\')">去知识库 →</span></div>';
     return;
   }
-  var wk = STUDY_PLAN[w - 1];
-  var total = wk.tasks.length, done = 0;
-  wk.tasks.forEach(function (t, i) { if (state.plan['w' + w + '-' + i]) done++; });
+  var cur = planCurrent();
+  if (cur.allDone) {
+    b.hidden = false;
+    b.innerHTML = '<div class="today-banner-inner">🎉 <b>12 周计划全部完成</b>！总进度 100%——别忘了导出备份，然后开启 RDMA 模块进阶。</div>';
+    return;
+  }
+  var w = cur.wk.week;
   b.hidden = false;
-  b.innerHTML = '<div class="today-banner-inner">📅 <b>第 ' + w + ' 周</b> · ' + esc(wk.theme) +
-    ' — 本周任务 <b>' + done + '/' + total + '</b>' +
-    (done < total ? '<span class="link" onclick="App.go(\'plan\')">去打卡 →</span>' : '<span style="color:var(--ok);margin-left:auto;font-weight:700">✓ 本周已完成</span>');
+  b.innerHTML = '<div class="today-banner-inner">📅 <b>第 ' + w + ' 周</b>' +
+    (cur.shift ? ' <span class="shift-badge">⏳ 顺延 +' + cur.shift + ' 天</span>' : '') +
+    ' · ' + esc(cur.wk.theme) + ' — 本周任务 <b>' + cur.done + '/' + cur.total + '</b>' +
+    '<span class="link" onclick="App.go(\'plan\')">去打卡 →</span></div>';
 }
 
 /* ---------------- 知识库 ---------------- */
+function specPanelHtml(cardId) {
+  if (typeof CARD_SPEC_REFS === 'undefined' || !state.specShow) return '';
+  var nums = CARD_SPEC_REFS[cardId];
+  if (!nums) return '';
+  var hasEx = typeof SPEC_SECTIONS !== 'undefined';
+  var items = nums.map(function (n) {
+    var r = (typeof SPEC_REFS !== 'undefined') ? SPEC_REFS[n] : null;
+    if (!r) return '';
+    var h = '<div class="spec-item"><b>§' + esc(n) + '</b> ' + esc(r.t) +
+      ' <span class="muted">（p.' + r.p + '）</span>';
+    if (hasEx && SPEC_SECTIONS[n]) {
+      h += '<details class="spec-details"><summary>查看原文摘录（仅本地可用）</summary><pre>' +
+        esc(SPEC_SECTIONS[n]) + '</pre></details>';
+    }
+    return h + '</div>';
+  }).join('');
+  if (!items) return '';
+  var meta = (typeof SPEC_REFS_META !== 'undefined') ? SPEC_REFS_META.name : '';
+  return '<div class="spec-box"><b>📖 规范关联</b>' +
+    (meta ? ' <span class="muted">（' + esc(meta) + ' · 关键词自动匹配，供定位精读）</span>' : '') +
+    items + '</div>';
+}
 function renderKB() {
   var kw = App.kbSearch.trim().toLowerCase();
   var cards = KNOWLEDGE.filter(function (k) {
@@ -192,15 +257,17 @@ function renderKB() {
     return (k.title + ' ' + k.tags.join(' ') + ' ' + k.body).toLowerCase().indexOf(kw) >= 0;
   });
   var readSet = {}; state.read.forEach(function (id) { readSet[id] = 1; });
-  var navItems = [{ id: 'all', name: '全部模块', cnt: KNOWLEDGE.length }].concat(
-    MODULES.map(function (m) {
-      return { id: m.id, name: m.name, cnt: KNOWLEDGE.filter(function (k) { return k.module === m.id; }).length };
-    })
-  );
-  var navHtml = navItems.map(function (m) {
-    return '<button class="mod-item' + (App.kbModule === m.id ? ' active' : '') + '" onclick="App.kbPick(\'' + m.id + '\')">' +
-      esc(m.name) + '<span class="cnt">' + m.cnt + '</span></button>';
-  }).join('');
+  var navHtml = '<button class="mod-item' + (App.kbModule === 'all' ? ' active' : '') +
+    '" onclick="App.kbPick(\'all\')">全部模块<span class="cnt">' + KNOWLEDGE.length + '</span></button>';
+  GROUPS.forEach(function (g) {
+    navHtml += '<div class="group-h">' + g.icon + ' ' + esc(g.name) + '</div>';
+    MODULES.filter(function (m) { return m.group === g.id; }).forEach(function (m) {
+      var cnt = KNOWLEDGE.filter(function (k) { return k.module === m.id; }).length;
+      navHtml += '<button class="mod-item' + (App.kbModule === m.id ? ' active' : '') +
+        '" onclick="App.kbPick(\'' + m.id + '\')">' + esc(m.name) +
+        '<span class="cnt">' + cnt + '</span></button>';
+    });
+  });
   var cardsHtml = cards.map(function (k) {
     var open = !!App.kbOpen[k.id];
     return '<div class="kcard' + (open ? ' open' : '') + (readSet[k.id] ? ' read' : '') + '" id="kc-' + k.id + '">' +
@@ -213,6 +280,7 @@ function renderKB() {
       '<div class="tagrow">' + k.tags.map(function (t) { return '<span class="tag">' + esc(t) + '</span>'; }).join('') + '</div>' +
       '<div class="kbody">' + md(k.body) + '</div>' +
       (k.verify ? '<div class="verify-box"><b>🎯 验证要点：</b>' + esc(k.verify) + '</div>' : '') +
+      specPanelHtml(k.id) +
       '<div style="margin-top:12px"><button class="btn small ghost" onclick="App.kbRead(\'' + k.id + '\')">' +
       (readSet[k.id] ? '✓ 已标记已读（点击取消）' : '标记为已读') + '</button></div>' +
       '</div></div>';
@@ -257,9 +325,12 @@ App.kbRead = function (id) {
 
 /* ---------------- 测验：配置页 ---------------- */
 function renderQuizCfg() {
-  var opts = MODULES.map(function (m) {
-    var cnt = QUESTIONS.filter(function (q) { return q.module === m.id; }).length;
-    return '<option value="' + m.id + '"' + (App.quizCfg.scope === m.id ? ' selected' : '') + '>' + esc(m.name) + '（' + cnt + ' 题）</option>';
+  var opts = GROUPS.map(function (g) {
+    var ms = MODULES.filter(function (m) { return m.group === g.id; }).map(function (m) {
+      var cnt = QUESTIONS.filter(function (q) { return q.module === m.id; }).length;
+      return '<option value="' + m.id + '"' + (App.quizCfg.scope === m.id ? ' selected' : '') + '>' + esc(m.name) + '（' + cnt + ' 题）</option>';
+    }).join('');
+    return '<optgroup label="' + esc(g.name) + '">' + ms + '</optgroup>';
   }).join('');
   var wrongCnt = Object.keys(state.wrong).filter(function (id) { return state.wrong[id].s < 2 && QBY[id]; }).length;
   $('#main').innerHTML =
@@ -458,24 +529,37 @@ App.wrongDrop = function (id) {
 
 /* ---------------- 学习计划 ---------------- */
 function renderPlan() {
-  var w = currentWeek();
+  var wks = planWeeks();
+  var cur = planCurrent();
+  var curWeek = cur ? cur.wk.week : -1;
   var totalTasks = 0, doneTasks = 0;
-  STUDY_PLAN.forEach(function (wk) { totalTasks += wk.tasks.length; wk.tasks.forEach(function (t, i) { if (state.plan['w' + wk.week + '-' + i]) doneTasks++; }); });
+  wks.forEach(function (s) { totalTasks += s.total; doneTasks += s.done; });
   var pct = Math.round(doneTasks / totalTasks * 100);
-  var weeksHtml = STUDY_PLAN.map(function (wk) {
-    var done = 0;
+  var weeksHtml = wks.map(function (s) {
+    var wk = s.wk;
     var rows = wk.tasks.map(function (t, i) {
       var key = 'w' + wk.week + '-' + i, ck = !!state.plan[key];
-      if (ck) done++;
       return '<div class="task-row' + (ck ? ' done' : '') + '">' +
         '<input type="checkbox" class="task-check" ' + (ck ? 'checked' : '') + ' onchange="App.planToggle(\'' + key + '\')">' +
         '<span class="task-text">' + esc(t) + '</span></div>';
     }).join('');
-    var wp = Math.round(done / wk.tasks.length * 100);
+    var wp = Math.round(s.done / s.total * 100);
+    var dates = s.planned
+      ? fmtShort(s.planned) + ' ~ ' + fmtShort(new Date(s.planned.getTime() + 6 * 86400000))
+      : '';
+    var status = '';
+    if (s.planned) {
+      if (s.allDone) status = ' <span style="color:var(--ok);font-size:12px">✓ 已完成</span>';
+      else if (s.actualStart && s.actualStart > s.planned) status = ' <span class="shift-badge">⏳ 顺延 +' + s.shift + ' 天</span>';
+      else if (wk.week === curWeek) status = '';
+    }
     return '<div class="card week-card">' +
       '<div class="week-head"><span class="week-no">第 ' + wk.week + ' 周</span>' +
       '<span class="week-theme">' + esc(wk.theme) + '</span>' +
-      (w === wk.week ? '<span class="week-now">⏰ 本周</span>' : '') + '</div>' +
+      (wk.week === curWeek && !s.allDone ? '<span class="week-now">⏰ 本周</span>' : '') +
+      status + '</div>' +
+      (s.planned ? '<div class="muted" style="margin-top:2px">📅 计划 ' + dates +
+        (s.actualStart && s.actualStart > s.planned ? ' · 实际开始 ' + fmtShort(s.actualStart) : '') + '</div>' : '') +
       (wk.modules.length ? '<div class="muted" style="margin-top:2px">对应模块：' + wk.modules.map(function (m) { return esc(MODBY[m].name.replace(/^M\d+ /, '')); }).join('、') + '</div>' : '') +
       '<div style="margin-top:8px">' + rows + '</div>' +
       '<div class="week-prog"><div class="progress-track"><div class="progress-fill" style="width:' + wp + '%"></div></div><span class="muted" style="font-size:12px">' + wp + '%</span></div>' +
@@ -488,13 +572,16 @@ function renderPlan() {
     '<label>开始日期 <input type="date" value="' + esc(state.planStart) + '" onchange="App.planSetStart(this.value)"></label>' +
     '<button class="btn ghost small" onclick="App.planSetStart(\'' + todayStr() + '\')">设为今天</button>' +
     '<span style="flex:1"></span>' +
+    '<button class="btn ghost small" onclick="App.planReset()">↺ 重置计划进度</button>' +
     '<button class="btn small" onclick="App.ics()">📥 导出日历提醒 (.ics)</button>' +
     '</div>' +
-    '<p class="muted" style="margin-bottom:10px">导出后双击/打开 ics 文件可导入 Windows 日历或手机日历，每天 21:00 提醒学习（提前 15 分钟）。</p>' +
+    '<p class="muted" style="margin-bottom:10px">导出后双击/打开 ics 文件可导入 Windows 日历或手机日历，每天 21:00 提醒学习（提前 15 分钟）。<br>' +
+    '<b>顺延规则</b>：某周任务没做完，后面各周自动顺延；提前做完则提前开始——按实际节奏走，不用追赶日历。</p>' +
     '<div class="week-prog"><div class="progress-track"><div class="progress-fill" style="width:' + pct + '%"></div></div>' +
     '<span class="muted" style="font-size:12px">总进度 ' + doneTasks + '/' + totalTasks + '（' + pct + '%）</span></div>' +
-    (w ? '<p class="muted" style="margin:8px 0 0">📍 当前处于第 ' + w + ' 周' + (w < 12 ? '，主题：' + esc(STUDY_PLAN[w - 1].theme) : '（已到最后一周，冲刺！）') + '</p>'
-       : '<p class="muted" style="margin:8px 0 0">设置开始日期后，首页横幅会显示当前周与任务进度。</p>') +
+    (state.planStart && cur ? '<p class="muted" style="margin:8px 0 0">📍 当前：<b>第 ' + cur.wk.week + ' 周</b>' +
+      (cur.shift ? '（顺延 +' + cur.shift + ' 天）' : '') + '，主题：' + esc(cur.wk.theme) + '</p>'
+      : '<p class="muted" style="margin:8px 0 0">设置开始日期后，首页横幅会显示当前周与任务进度。</p>') +
     '</div>' +
     weeksHtml;
 }
@@ -503,8 +590,13 @@ App.planSetStart = function (v) {
   state.planStart = v; save(); toast('开始日期已设为 ' + v); App.render();
 };
 App.planToggle = function (key) {
-  if (state.plan[key]) delete state.plan[key]; else { state.plan[key] = true; markToday(); }
+  if (state.plan[key]) delete state.plan[key]; else { state.plan[key] = Date.now(); markToday(); }
   save(); App.render();
+};
+App.planReset = function () {
+  if (confirm('确定清空所有打卡记录？（开始日期保留，顺延状态重新计算）')) {
+    state.plan = {}; save(); toast('计划进度已重置'); App.render();
+  }
 };
 App.ics = function () {
   var d = new Date(); d.setDate(d.getDate() + 1);
@@ -534,16 +626,20 @@ function renderStats() {
   var acc = attempts ? Math.round(corrects / attempts * 100) : 0;
   var mastered = Object.keys(state.wrong).filter(function (id) { return state.wrong[id] && state.wrong[id].s >= 2; }).length;
   var weak = Object.keys(state.wrong).filter(function (id) { return state.wrong[id] && state.wrong[id].s < 2 && QBY[id]; }).length;
-  var bars = MODULES.map(function (m) {
-    var qs = QUESTIONS.filter(function (q) { return q.module === m.id; });
-    var a = 0, k = 0;
-    qs.forEach(function (q) { var st = state.stats[q.id]; if (st) { a += st.a; k += st.k; } });
-    var pct = a ? Math.round(k / a * 100) : 0;
-    var ks = KNOWLEDGE.filter(function (x) { return x.module === m.id; });
-    var rd = ks.filter(function (x) { return state.read.indexOf(x.id) >= 0; }).length;
-    return '<div class="modbar-row"><div class="row1"><span>' + esc(m.name) + '</span><span class="muted">答题 ' + a + ' 次 · 正确率 ' + (a ? pct + '%' : '—') + ' · 已读 ' + rd + '/' + ks.length + '</span></div>' +
-      '<div class="progress-track"><div class="progress-fill" style="width:' + (a ? pct : 0) + '%;background:' + (pct >= 80 ? 'var(--ok)' : pct >= 60 ? 'var(--warn)' : 'var(--bad)') + '"></div></div></div>';
-  }).join('');
+  var bars = '';
+  GROUPS.forEach(function (g) {
+    bars += '<div class="group-h" style="margin:14px 0 8px">' + g.icon + ' ' + esc(g.name) + '</div>';
+    MODULES.filter(function (m) { return m.group === g.id; }).forEach(function (m) {
+      var qs = QUESTIONS.filter(function (q) { return q.module === m.id; });
+      var a = 0, k = 0;
+      qs.forEach(function (q) { var st = state.stats[q.id]; if (st) { a += st.a; k += st.k; } });
+      var pct = a ? Math.round(k / a * 100) : 0;
+      var ks = KNOWLEDGE.filter(function (x) { return x.module === m.id; });
+      var rd = ks.filter(function (x) { return state.read.indexOf(x.id) >= 0; }).length;
+      bars += '<div class="modbar-row"><div class="row1"><span>' + esc(m.name) + '</span><span class="muted">答题 ' + a + ' 次 · 正确率 ' + (a ? pct + '%' : '—') + ' · 已读 ' + rd + '/' + ks.length + '</span></div>' +
+        '<div class="progress-track"><div class="progress-fill" style="width:' + (a ? pct : 0) + '%;background:' + (pct >= 80 ? 'var(--ok)' : pct >= 60 ? 'var(--warn)' : 'var(--bad)') + '"></div></div></div>';
+    });
+  });
   $('#main').innerHTML =
     '<h2 class="view-title">📊 学习统计</h2>' +
     '<div class="stat-grid">' +
@@ -568,6 +664,15 @@ function renderSettings() {
     '<button class="btn" onclick="App.exportData()">📤 导出备份 JSON</button>' +
     '<label class="btn ghost" style="cursor:pointer">📥 导入备份<input type="file" accept=".json,application/json" style="display:none" onchange="App.importData(this)"></label>' +
     '</div></div>' +
+    '<div class="card"><h3>规范原文关联</h3>' +
+    '<p class="muted">' + (typeof SPEC_REFS_META !== 'undefined'
+      ? '已关联规范：' + esc(SPEC_REFS_META.name) + '（' + SPEC_REFS_META.sections + ' 个章节，' + SPEC_REFS_META.cardsLinked + ' 张卡片）'
+      : '未加载章节引用表。') +
+    (typeof SPEC_SECTIONS !== 'undefined'
+      ? '<br>本地摘录已加载（' + esc(SPEC_META.source) + '，生成于 ' + esc(SPEC_META.generated) + '）——仅本设备可用，不会同步到公开站点。'
+      : '<br>未检测到本地摘录（js/data-spec.js）。在本机运行 <code>tools/extract-spec.py</code> 生成，即可在知识卡片中展开规范原文摘录。') +
+    '</p>' +
+    '<label style="cursor:pointer"><input type="checkbox" ' + (state.specShow ? 'checked' : '') + ' onchange="App.specShow(this.checked)"> 显示知识卡片的「📖 规范关联」面板</label></div>' +
     '<div class="card"><h3>外观</h3><p class="muted">当前主题：' + (state.theme === 'dark' ? '深色 🌙' : '浅色 ☀️') + '（右上角按钮可切换）</p></div>' +
     '<div class="card"><h3>重置</h3><p class="muted">清空本设备的全部学习记录（已读、错题、统计、打卡）。</p>' +
     '<button class="btn danger" onclick="App.resetAll()">🗑️ 清空全部数据</button></div>' +
@@ -606,6 +711,8 @@ App.resetAll = function () {
   }
 };
 
+App.specShow = function (v) { state.specShow = !!v; save(); App.render(); };
+
 /* ---------------- 主题 ---------------- */
 function applyTheme() {
   document.documentElement.setAttribute('data-theme', state.theme);
@@ -621,4 +728,11 @@ load();
 applyTheme();
 App.render();
 window.App = App;
+/* 动态加载本地规范摘录（公开站点该文件不存在，自动静默降级为仅章节引用） */
+(function () {
+  var s = document.createElement('script');
+  s.src = 'js/data-spec.js';
+  s.onload = function () { if (App.view === 'kb') App.render(); };
+  document.head.appendChild(s);
+})();
 })();

@@ -799,6 +799,355 @@ const QUESTIONS = [
   answer: 1,
   explain: 'Tag 默认 8 bit（256 个），Gen4+ 可扩展到 10 bit（1024 个）。outstanding 上限用例验证 tag 管理、流控配合与耗尽后的反压行为。'
 },
+/* ================= M12/M13：VIP 实战与样片定位题 ================= */
+
+{
+  id: 'qd-m12-01', module: 'm12', type: 'multi',
+  q: '【VIP】选型/评估 PCIe VIP 时应重点关注的维度包括？',
+  options: ['协议版本特性覆盖（6.0/6.1 全特性）', '注错 API 的粒度（符号级/TLP 级/时序级）', 'passive monitor 是否可独立挂在现有设计上', '价格是否最便宜'],
+  answer: [0, 1, 2],
+  explain: 'D 不是工程维度。选型核心是能力匹配：特性覆盖、注错粒度、monitor 独立性、软件模型、性能统计、可移植性。'
+},
+{
+  id: 'qd-m12-02', module: 'm12', type: 'single',
+  q: '【VIP】bring-up 阶段"训练反复失败"的最常见原因是？',
+  options: ['VIP 协议栈 bug', 'DUT 与 VIP 的能力配置不一致（宽度/MPS/速率等）', '仿真器性能不足', '时钟频率配错'],
+  answer: 1,
+  explain: '配置位不一致是最常见假失败源——bring-up checklist 第一步就是双向对齐能力参数，再查协议问题。'
+},
+{
+  id: 'qd-m12-03', module: 'm12', type: 'multi',
+  q: '【VIP】商用 VIP 的注错能力通常覆盖哪些层级？',
+  options: ['PHY/符号级（位翻转/burst 错）', '链路帧级（CRC 破坏/DLLP 丢弃/credit 破坏）', '事务级（ECRC/poison/排序违规）', '时序级（ACK 延迟/UpdateFC 超时）'],
+  answer: [0, 1, 2, 3],
+  explain: '全选。四个层级都要覆盖——错误矩阵的行就是从 VIP 注错 API 清单生成的，不要凭想象写。'
+},
+{
+  id: 'qd-m12-04', module: 'm12', type: 'judge',
+  q: '【VIP】错误注入用例矩阵应该以 VIP 文档的注错能力清单为输入来构建。',
+  options: ['正确', '错误'],
+  answer: 0,
+  explain: 'VIP 注错清单 = 可行错误类型的权威来源；行列交叉（错误×时机×参数）生成矩阵，避免"想当然写用例"。'
+},
+{
+  id: 'qd-m12-05', module: 'm12', type: 'multi',
+  q: '【VIP】下列哪些属于 VIP 使用的常见坑？',
+  options: ['DUT 与 VIP 能力参数不一致导致假失败', '复位后 VIP 内部状态残留', '注错用例跑完忘记关闭注入', 'checker 等级从第一天就全部开到最严反而淹没问题'],
+  answer: [0, 1, 2, 3],
+  explain: '全选。四条都是高频坑；对策分别是 bring-up 对配置、用例独立复位校验清零、注入限定生命周期、分阶段收紧。'
+},
+{
+  id: 'qd-m12-06', module: 'm12', type: 'single',
+  q: '【VIP】性能回归的正确做法是？',
+  options: [
+    '跑一次记下数字即可',
+    '吞吐/延迟/重传率直方图入库，回归对比趋势并进 CI 门禁',
+    '只看峰值带宽',
+    '性能不归验证管'
+  ],
+  answer: 1,
+  explain: '性能必须基线化+趋势化+门禁化，才能防止静默劣化；峰值带宽会掩盖延迟/重传问题。'
+},
+{
+  id: 'qd-m13-01', module: 'm13', type: 'single',
+  q: '【样片】硅后拿到一个"链路问题"，debug 的第一响应应该是？',
+  options: [
+    '直接换芯片',
+    '先按症状分类（训练类/数据类/配置类/功耗类），再选对应工具链与假设树',
+    '立刻跑全量回归',
+    '先改软件超时参数试试'
+  ],
+  answer: 1,
+  explain: '分类决定工具链与假设树——四类问题的第一手证据完全不同，乱抓波形浪费时间。'
+},
+{
+  id: 'qd-m13-02', module: 'm13', type: 'single',
+  q: '【样片】训练卡死在 Polling.Active，最应该先检查什么？',
+  options: ['软件驱动版本', '电气与配置位（TS 交换/极性反转/幅度/耦合）', '操作系统内核日志', '固件签名'],
+  answer: 1,
+  explain: 'Polling 卡死 = TS 交换失败或符号错率极高，方向在电气与配置（极性反转/幅度/AC 耦合），不是软件层。'
+},
+{
+  id: 'qd-m13-03', module: 'm13', type: 'single',
+  q: '【样片】训练通过后偶发 CRC 错，第一步应该做什么？',
+  options: ['加 FIFO', 'margin 扫描（眼高/眼宽余量）并回放均衡过程', '降低温度', '改软件轮询'],
+  answer: 1,
+  explain: '偶发错误先量化余量：margin 扫描 + EQ 过程回放，确认是否均衡收敛到次优点导致余量不足。'
+},
+{
+  id: 'qd-m13-04', module: 'm13', type: 'single',
+  q: '【样片】带宽骤降伴随大量重传，分析仪上应优先统计什么？',
+  options: ['重传的触发原因（Nak 还是超时）', 'TLP 的 TC 分布', '配置空间访问次数', 'NULL flit 数量'],
+  answer: 0,
+  explain: 'Nak 为主 → 链路真有错；超时为主 → ACK 路径延迟问题（如 timer 与实际延迟不匹配）。两者的修复方向完全不同。'
+},
+{
+  id: 'qd-m13-05', module: 'm13', type: 'single',
+  q: '【样片】热插拔后设备偶尔枚举不到，最可能的根因方向是？',
+  options: [
+    'FLR 完成时序与软件枚举竞争，或桥窗口未更新',
+    '固件太大',
+    '以太网冲突',
+    'DMA 地址未对齐'
+  ],
+  answer: 0,
+  explain: '枚举丢设备的两大典型根因：FLR 期间设备不响应 CfgRd 而软件没等、桥的总线/地址窗口未及时更新。抓配置事务 trace 即可定位。'
+},
+{
+  id: 'qd-m13-06', module: 'm13', type: 'judge',
+  q: '【样片】MSI-X 中断验证只需检查"软件是否收到中断"，不需要断言 MSI-X TLP 的地址/数据与排序。',
+  options: ['正确', '错误'],
+  answer: 1,
+  explain: '收到中断 ≠ TLP 正确。地址/数据错、与其他 posted 写乱序、掩码竞态都可能造成偶发丢失——TLP 级逐字段断言是必须的。'
+},
+/* ================= RDMA 题（R1-R9） ================= */
+
+/* R1 */
+{
+  id: 'qr-1-01', module: 'r1', type: 'single',
+  q: 'RoCEv2 报文的 UDP 目的端口是？',
+  options: ['443', '4791', '8080', '5353'],
+  answer: 1,
+  explain: 'UDP 4791 是 RoCEv2 的协议标识端口，交换机/DPU 据此识别 RoCE 流量做 ECN/ECMP 处理。'
+},
+{
+  id: 'qr-1-02', module: 'r1', type: 'multi',
+  q: '关于 verbs 对象模型，正确的有？',
+  options: ['PD 是隔离边界，MR/CQ/QP 都挂在 PD 下', '数据面（post_send/poll_cq）走用户态，控制面走内核', '同一 PD 的对象才能互操作，跨 PD 经 rkey 校验', '销毁顺序随意，硬件会自动清理'],
+  answer: [0, 1, 2],
+  explain: 'D 错误：必须先销毁使用方（QP）再销毁被引用方（CQ/MR/PD），销毁 MR 时的在途访问是经典 bug 源。'
+},
+{
+  id: 'qr-1-03', module: 'r1', type: 'single',
+  q: 'rkey 的作用是？',
+  options: ['本地 WQE 引用内存的凭据', '远端对本端内存做 WRITE/READ/Atomic 的访问凭据', 'QP 的编号', '中断向量号'],
+  answer: 1,
+  explain: 'lkey 供本地 WQE 引用内存，rkey 交给远端用于远程访问；远端访问时硬件校验 rkey→MR→权限→边界。'
+},
+{
+  id: 'qr-1-04', module: 'r1', type: 'judge',
+  q: 'WQE 必须在 doorbell 写出之前对 NIC 可见，否则可能读到旧数据造成静默数据损坏。',
+  options: ['正确', '错误'],
+  answer: 0,
+  explain: '这是发布顺序的硬约束（需要 memory barrier/WC 语义保证）。顺序错了 NIC DMA 读到未写完的 WQE——最隐蔽的一类 bug。'
+},
+{
+  id: 'qr-1-05', module: 'r1', type: 'single',
+  q: 'CQ 溢出（CQ overrun）的规范后果是？',
+  options: ['自动丢弃最旧 CQE', '相关 QP 转 Error 状态', '阻塞新 CQE 等待软件 poll', '自动扩容'],
+  answer: 1,
+  explain: 'CQ 满又来新完成 → 相关 QP 转 Error（规范要求）。轮询不及时会毁掉整个连接，所以延迟敏感场景用 polling。'
+},
+/* R2 */
+{
+  id: 'qr-2-01', module: 'r2', type: 'single',
+  q: 'UC 类型的 QP 不支持哪些操作？',
+  options: ['SEND 和 RDMA WRITE', 'RDMA READ 和 Atomic', '所有 SEND 变体', '什么都不支持'],
+  answer: 1,
+  explain: 'UC（不可靠连接）支持 SEND/WRITE，不支持需要响应的 READ/Atomic；UD 则只支持 SEND。'
+},
+{
+  id: 'qr-2-02', module: 'r2', type: 'single',
+  q: 'QP 主状态迁移的正确顺序是？',
+  options: ['RESET→INIT→RTR→RTS', 'RESET→RTR→INIT→RTS', 'INIT→RESET→RTS→RTR', 'RESET→RTS→RTR→INIT'],
+  answer: 0,
+  explain: 'RESET→INIT（配置/可挂 RQ）→RTR（接收就绪，填对端信息）→RTS（发送就绪）。非法迁移必须被 modify_qp 拒绝。'
+},
+{
+  id: 'qr-2-03', module: 'r2', type: 'single',
+  q: 'QP 属性中 timeout 的含义是？（编码 n 对应的超时）',
+  options: ['固定 1ms×n', '4.096μs × 2^n', 'n μs', '2^n ms'],
+  answer: 1,
+  explain: 'ACK 超时 = 4.096μs × 2^timeout（0~31 编码）。两端 PSN 错配与超时参数误配是 bring-up 高频错误。'
+},
+{
+  id: 'qr-2-04', module: 'r2', type: 'multi',
+  q: 'RTS（Ready To Send）阶段设置的属性包括？',
+  options: ['sq_psn', 'timeout 与 retry_cnt', 'rnr_retry 与 max_rd_atomic', 'dest_qp 与 rq_psn'],
+  answer: [0, 1, 2],
+  explain: 'dest_qp/rq_psn/path_mtu 是 RTR（接收侧）属性；RTS 设发送参数。两端 PSN 必须匹配（sq_psn = 对端 rq_psn）。'
+},
+{
+  id: 'qr-2-05', module: 'r2', type: 'judge',
+  q: '未设置 IBV_SEND_SIGNALED 标志的 WQE 默认不会生成 CQE。',
+  options: ['正确', '错误'],
+  answer: 0,
+  explain: '只有签名 WR 生成 CQE（省 CQ 空间的按批设计）；应用用批完成语义时要记得标记最后一个 WR。'
+},
+/* R3 */
+{
+  id: 'qr-3-01', module: 'r3', type: 'single',
+  q: 'BTH 中的 PSN 字段位宽是？',
+  options: ['16 bit', '24 bit', '32 bit', '8 bit'],
+  answer: 1,
+  explain: 'PSN 24bit，回绕于 2^24——回绕边界（0xFFFFFF→0x000000）的比较逻辑是无符号比较的经典陷阱。'
+},
+{
+  id: 'qr-3-02', module: 'r3', type: 'multi',
+  q: 'RoCEv2 报文的封装层次（由外到内）包括？',
+  options: ['以太网帧头 + IP 头 + UDP 头（4791）', 'IB 传输头（BTH[+扩展头]）', 'payload + ICRC', 'GRE 头'],
+  answer: [0, 1, 2],
+  explain: 'RoCEv2 = 以太网/IP/UDP(4791) + IB 传输层 + ICRC。没有 GRE 头；注意 RoCEv2 不使用 GRH（IP 头承担路由语义）。'
+},
+{
+  id: 'qr-3-03', module: 'r3', type: 'single',
+  q: '访问特权 QP（管理类）要求的特权 Q_Key 值是？',
+  options: ['0x00000000', '0x80010000', '0xFFFFFFFF', '0x0000FFFF'],
+  answer: 1,
+  explain: '0x80010000 是特权 Q_Key；普通 QP 校验各自注册的 Q_Key 值。Q_Key 校验失败 → 丢包（隔离生效）。'
+},
+{
+  id: 'qr-3-04', module: 'r3', type: 'single',
+  q: 'SEND_ONLY（单包 SEND 消息）的 opcode 编码是？',
+  options: ['0x00', '0x04', '0x07', '0x0B'],
+  answer: 2,
+  explain: 'SEND_FIRST=0x04、MIDDLE=0x05、LAST=0x06、ONLY=0x07；RDMA_WRITE_FIRST..ONLY=0x08..0x0B；ACK=0x00。完整表以 IBTA spec 为准。'
+},
+{
+  id: 'qr-3-05', module: 'r3', type: 'judge',
+  q: 'RoCEv2 报文携带 GRH（Global Route Header）以支持跨子网路由。',
+  options: ['正确', '错误'],
+  answer: 1,
+  explain: '常见误解！GRH 是 IB 原生网络的路由头；RoCEv2 用 IP 头承担路由语义，GID 通过 IP/MAC 派生映射——RoCEv2 包里没有 GRH。'
+},
+{
+  id: 'qr-3-06', module: 'r3', type: 'single',
+  q: 'ICRC 的覆盖范围是？',
+  options: ['仅 payload', '以太网帧头到 payload', 'BTH 起（含）到 ICRC 前的全部内容（IP/UDP 可变字段虚零处理）', '仅 BTH'],
+  answer: 2,
+  explain: 'ICRC 端到端保护 IB 传输头+扩展头+payload；IP 头的 TTL/HopLimit 等可变字段按规范虚零参与计算，路由转发不影响校验。'
+},
+/* R4 */
+{
+  id: 'qr-4-01', module: 'r4', type: 'single',
+  q: 'RC 模式 ACK 中携带的 PSN 语义是？',
+  options: ['刚收到的那个包的 PSN', '下一个期望接收的 PSN（cumulative 确认）', '发送窗口大小', '重传起点'],
+  answer: 1,
+  explain: 'ACK 是累计确认：告诉对端"到此 PSN 前全部收到"。NAK 同样携带期望 PSN，触发 Go-Back-N。'
+},
+{
+  id: 'qr-4-02', module: 'r4', type: 'single',
+  q: 'RC 收到 PSN 不符的 NAK 后，发送端的重传策略是？',
+  options: ['只重传丢失的那一个包', '从期望 PSN 起重发所有未确认包（Go-Back-N）', '选择重传（SR-ARQ）', '放弃并重建 QP'],
+  answer: 1,
+  explain: 'IBTA RC 采用 Go-Back-N：从 NAK 指示的 PSN 起全部重发——简单可靠但带宽代价大，这是 RoCE 必须依赖无损网络的原因之一。'
+},
+{
+  id: 'qr-4-03', module: 'r4', type: 'multi',
+  q: '关于 RNR NAK，正确的有？',
+  options: ['表示接收端 RQ 没有可用的 recv WQE', '携带 timer 告知对端多久后重试', 'rnr_retry=7 表示无限重试', 'RNR 重试用尽后 QP 立即转 Error 且不可恢复'],
+  answer: [0, 1, 2],
+  explain: 'D 错误：RNR 重试用尽是该 WQE 以 RNR_RETRY_EXC_ERR 完成（QP 不一定转 Error——与 transport retry 用尽不同）。存储场景 rnr_retry=7 是常态配置。'
+},
+{
+  id: 'qr-4-04', module: 'r4', type: 'single',
+  q: 'CQE 状态 RETRY_EXC_ERR 表示？',
+  options: ['内存访问越界', '重传计数用尽（QP 转 Error）', '对端返回错误数据', '本地 SGL 非法'],
+  answer: 1,
+  explain: 'transport retry 用尽 → QP 转 Error + 未完成 WQE 以此状态刷新；根因方向：链路质量/对端存活/timeout 参数。'
+},
+{
+  id: 'qr-4-05', module: 'r4', type: 'judge',
+  q: 'ICRC 校验失败的包被静默丢弃（不回 NAK），RC 模式下靠发送端超时重传恢复。',
+  options: ['正确', '错误'],
+  answer: 0,
+  explain: 'ICRC 错误无显式反馈，代价是一次完整超时重传周期——所以 RoCE 部署要在链路层尽量拦掉位错（FCS/PFC），ICRC 只兜底端到端。'
+},
+/* R5 */
+{
+  id: 'qr-5-01', module: 'r5', type: 'multi',
+  q: '关于 PFC（802.1Qbb），正确的有？',
+  options: ['按 8 个优先级独立暂停，不整端口一刀切', 'PFC 帧是 MAC Control 帧，含优先级位图与暂停时长', 'PFC 保证链路层不丢包，是 RoCE 的基础配置', 'PFC 可替代 ECN 做拥塞控制'],
+  answer: [0, 1, 2],
+  explain: 'D 错误：PFC 是流控（防丢包），不是拥塞控制（防拥塞）——两者配合（ECN 早动、PFC 兜底），但不可互替。'
+},
+{
+  id: 'qr-5-02', module: 'r5', type: 'single',
+  q: 'PFC 死锁的典型成因是？',
+  options: ['带宽不足', '多优先级+拓扑中 PFC 依赖成环（互相等待）', 'MTU 不匹配', '路由表过大'],
+  answer: 1,
+  explain: 'A 等停对 B 的暂停、B 又被 A 暂停——依赖成环永久阻塞。缓解：无环拓扑、优先级隔离、watchdog 兜底。'
+},
+{
+  id: 'qr-5-03', module: 'r5', type: 'single',
+  q: 'IP 头 ECN 字段中表示"经历拥塞（CE）"的编码是？',
+  options: ['00', '01', '10', '11'],
+  answer: 3,
+  explain: '00 不支持、01/10 ECT（可 ECN）、11 CE（拥塞经历）。交换机按 Kmin/Kmax/Pmax 概率标记 CE，接收 NIC 见 CE 生成 CNP。'
+},
+{
+  id: 'qr-5-04', module: 'r5', type: 'multi',
+  q: 'DCQCN 体系中各角色的职责包括？',
+  options: ['交换机：队列超阈值按概率标记 ECN（CE）', '接收 NIC：检测 CE 生成/聚合 CNP 回发', '发送 NIC：收 CNP 按alpha降速，超时未收则步进升速', 'PFC watchdog：负责速率调节'],
+  answer: [0, 1, 2],
+  explain: 'D 错误：watchdog 是 PFC 的防挂死兜底，与速率调节无关。DCQCN = ECN 标记 + CNP 通知 + 速率调节三段式。'
+},
+/* R6 */
+{
+  id: 'qr-6-01', module: 'r6', type: 'single',
+  q: 'GPUDirect RDMA 的核心价值是？',
+  options: ['GPU 之间直接 NVLink 通信', 'NIC DMA 直接读写 GPU 显存，绕过 CPU 中转拷贝', 'GPU 渲染加速', '减少显存占用'],
+  answer: 1,
+  explain: '通过 GPU BAR 映射 + P2P/IOMMU 授权，NIC 直接 DMA 到显存——跨节点训练数据路径省去 CPU staging，带宽时延双收益。'
+},
+{
+  id: 'qr-6-02', module: 'r6', type: 'single',
+  q: 'NVMe-oF 存储场景对 RDMA 验证最具挑战性的要求是？',
+  options: ['单流大带宽', '小 IO 高 IOPS 下的时延分布与保序一致性', '多播支持', '路由收敛速度'],
+  answer: 1,
+  explain: '4K 小 IO × 高 IOPS × P99.9 时延 + 写保序 + 快速故障隔离——存储是"时延尾部与一致性"的考场。'
+},
+{
+  id: 'qr-6-03', module: 'r6', type: 'single',
+  q: 'MPI 传输中，大消息通常采用的协议是？',
+  options: ['eager（直接 SEND 缓冲）', 'rendezvous（握手后 RDMA WRITE 直写对端）', 'multicast', 'polling'],
+  answer: 1,
+  explain: '小消息 eager（低时延），大消息 rendezvous（高带宽，对端登记位置后 RDMA WRITE + IMM 通知）——切换阈值附近是验证边界。'
+},
+/* R7 */
+{
+  id: 'qr-7-01', module: 'r7', type: 'multi',
+  q: 'RoCE NIC 验证环境"三方对账"scoreboard 的三方是？',
+  options: ['WQE（主机提交的请求）', '网络侧发出的包序列', 'CQE/中断（完成通知）', '固件版本号'],
+  answer: [0, 1, 2],
+  explain: '一个 WR 应产生确定的包序列与确定的完成——三方逐一对账是 NIC 验证的核心资产，重传/分段都纳入对账模型。'
+},
+{
+  id: 'qr-7-02', module: 'r7', type: 'multi',
+  q: 'RDMA 验证的错误注入应覆盖哪些类别？',
+  options: ['网络侧：丢包/乱序/延迟/PSN 错/ICRC 破坏/CNP 异常', '主机侧：doorbell-WQE 乱序/WQE 格式错', '内存侧：MR 越界/rkey 失效/Q_Key 错', 'CQ 满/中断丢失'],
+  answer: [0, 1, 2, 3],
+  explain: '全选——四个注入域对应 NIC 的四类输入界面，每行注入都要有确定性预期行为与端到端一致性兜底。'
+},
+{
+  id: 'qr-7-03', module: 'r7', type: 'single',
+  q: '大于 MTU 的 SEND 消息在 RC 下的分段方式是？',
+  options: ['硬件自动改 MTU', 'First + n×Middle + Last 包序列', '拆成多个独立 Only 包', 'RDMA 层禁止大消息'],
+  answer: 1,
+  explain: '分段边界（=MTU、MTU±1）是 checker 的基础覆盖；Last 包可带 IMM；分段重组必须不重不漏。'
+},
+{
+  id: 'qr-7-04', module: 'r7', type: 'judge',
+  q: 'RC 模式下同一 QP 内，即使网络乱序交付，上层观察到的 message 顺序也必须与发送顺序一致。',
+  options: ['正确', '错误'],
+  answer: 0,
+  explain: 'RC 保序是协议承诺（接收端按 PSN 重组）——保序断言 + 乱序注入是数据完整性验证的基本盘。'
+},
+/* R8/R9 */
+{
+  id: 'qr-8-01', module: 'r8', type: 'single',
+  q: 'Linux SoftRoCE（rxe.ko）在验证中的典型用法是？',
+  options: ['替代硬件做量产交付', '作为协议参考实现与 RTL 对拍（相同 WQE 序列比对包流）', '性能测试的黄金基线', '固件开发平台'],
+  answer: 1,
+  explain: 'rxe 是完整且可读的 RoCEv2 实现——对拍抓协议差异（差异先查规范再判错）；注意其性能/调度行为不代表硬件。'
+},
+{
+  id: 'qr-8-02', module: 'r8', type: 'multi',
+  q: 'RDMA NIC 验证中与 PCIe VIP 协同的"三条通路"包括？',
+  options: ['提交通路：WQE 写入 + 门铃 MMIO', 'DMA 通路：读 WQE/数据、写 CQE/对端内存', '通知通路：CQ arm + MSI-X 中断', '显示通路：帧缓冲'],
+  answer: [0, 1, 2],
+  explain: '三条通路的时间耦合（顺序依赖/时序窗口）正是 NIC 验证区别于纯协议验证的地方——memory ordering 断言（如 CQE 可见性先于中断）必建。'
+},
 ];
 
 if (typeof window !== 'undefined') {
