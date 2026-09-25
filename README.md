@@ -38,11 +38,30 @@
 
 ## 手机上使用（三种方式任选）
 
-1. **局域网访问（推荐）**：电脑运行 `start-server.bat`，手机同 WiFi 访问显示的地址。数据存在手机浏览器里。
-2. **拷贝到手机**：把整个 `pcie6-study` 文件夹发到手机（USB/微信文件传输助手），用浏览器打开 `index.html`。
-   - Android：Chrome 可正常打开和使用
-   - iOS：Safari 打开本地文件的保存能力受限，推荐用方式 1 或 3
-3. **免费托管**：把文件夹拖到 [Netlify Drop](https://app.netlify.com/drop) 或部署到 GitHub Pages，得到一个专属网址，任何设备都能访问。
+1. **公网访问（推荐）**：直接打开部署好的在线地址（见下节），任何设备、任何网络都能用
+2. **局域网访问**：电脑运行 `start-server.bat`，手机同 WiFi 访问显示的地址。数据存在手机浏览器里。
+3. **拷贝到手机**：把整个 `pcie6-study` 文件夹发到手机（USB/微信文件传输助手），用浏览器打开 `index.html`。
+
+## 🌐 公网部署（GitHub Pages）
+
+- **在线地址**：<https://damon-zxh.github.io/pcie6-study/>
+- **仓库**：<https://github.com/damon-zxh/pcie6-study>
+
+**手机安装为 App（PWA）**：
+
+1. 手机浏览器（推荐 Chrome / Safari）打开在线地址
+2. Android Chrome：菜单 → **添加到主屏幕**；iOS Safari：分享 → **添加到主屏幕**
+3. 桌面出现应用图标，打开即全屏运行；首次加载后**支持离线使用**（Service Worker 缓存全部资源）
+
+**内容更新流程**：
+
+1. 修改本地文件（知识卡片 / 题目 / 计划等）
+2. `git add -A && git commit -m "更新内容" && git push`
+3. GitHub Pages 约 1 分钟后自动重新发布
+
+> 注意：如果改动了 `index.html` / `css/` / `js/` 等被缓存的文件，记得同步把 `sw.js` 顶部的 `pcie6-study-v1` 版本号提升为 `v2`，否则老用户端可能继续用旧缓存（页面导航本身是网络优先，刷新一次即可拿到新 SW，随后自动清旧缓存）。
+
+**数据说明**：学习进度存在各设备浏览器 localStorage 中——手机和电脑各自独立记录，跨设备用「设置 → 导出/导入 JSON」同步。
 
 ## 数据跨设备同步
 
