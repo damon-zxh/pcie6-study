@@ -1,0 +1,17 @@
+{
+  "name": "PCIe 6.0 学习系统",
+  "short_name": "PCIe 6.0",
+  "description": "PCIe 6.0 验证工程师学习系统：知识库 · 测验 · 错题集 · 学习计划",
+  "lang": "zh-CN",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f5fb",
+  "theme_color": "#4f46e5",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
